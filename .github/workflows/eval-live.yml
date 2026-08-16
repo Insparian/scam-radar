@@ -1,0 +1,36 @@
+name: Live model eval (disabled until activation)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type RUN CAPPED LIVE EVAL"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scam-radar-live-eval
+  cancel-in-progress: false
+
+jobs:
+  activation-guard:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require exact human confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$CONFIRMATION" = "RUN CAPPED LIVE EVAL" || {
+            echo "Confirmation did not match. Gemini was not contacted."
+            exit 1
+          }
+      - name: Keep Gemini untouched before activation
+        run: |
+          echo "Live eval is not activated. No Gemini credential was read and no text left GitHub."
+          echo "### Live eval blocked: activation pending" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

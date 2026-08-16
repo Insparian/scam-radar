@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scamradar.insparian.com/contracts/pattern-match-v1.json",
+  "title": "Scam Radar pattern comparison v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["same_pattern", "confidence", "reason_codes", "material_change", "changes"],
+  "properties": {
+    "same_pattern": {"type": "boolean"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "reason_codes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["same_impersonation", "same_hook", "same_pressure_tactic", "same_requested_action", "same_money_path", "same_target", "mechanism_conflict", "insufficient_features"]}
+    },
+    "material_change": {"type": "boolean"},
+    "changes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"enum": ["new_mechanism", "new_technology", "new_script", "new_execution_step", "new_money_path", "new_channel", "new_target", "new_region", "routine_case", "none"]}
+    }
+  }
+}

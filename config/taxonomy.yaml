@@ -1,0 +1,27 @@
+schema_version: 1
+market: CN
+public_language: zh-CN
+categories:
+  - phone
+  - wechat
+  - investment
+  - pension
+  - health_products
+  - family_impersonation
+  - customer_service
+  - collectibles
+risk_types:
+  - confirmed_scam
+  - risk_alert
+legal_statuses:
+  - warning
+  - reported_case
+  - enforcement
+  - charge
+  - judgment
+  - unknown
+evidence_levels:
+  - A
+  - B
+  - C
+  - D

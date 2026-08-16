@@ -1,0 +1,80 @@
+name: Collection (disabled until activation)
+
+on:
+  schedule:
+    - cron: "17 7,13,20 * * *"
+      timezone: "Asia/Shanghai"
+  workflow_dispatch:
+    inputs:
+      source_key:
+        description: "One reviewed source key, or all"
+        required: true
+        default: all
+        type: string
+      dry_run:
+        description: "Fixture-only dry run; keep enabled before activation"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scam-radar-production-collection
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.event_name == 'workflow_dispatch' || vars.SCAM_RADAR_COLLECT_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SCAM_RADAR_ENV: ci
+      SCAM_RADAR_COLLECT_ENABLED: "false"
+      SCAM_RADAR_AI_ENABLED: "false"
+      SCAM_RADAR_DEPLOY_ENABLED: "false"
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install locked fixture worker
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: |
+          python -m pip install uv==0.12.5
+          uv sync --project worker --locked --extra dev
+      - name: Run safe fixture collection check
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: make collect-dry-run
+      - name: Fail closed for live collection
+        if: github.event_name == 'schedule' || !inputs.dry_run
+        run: |
+          echo "Live collection has not passed the external activation checkpoint."
+          echo "No source was contacted."
+          exit 1
+      - name: Write collection summary
+        if: always()
+        run: |
+          {
+            echo "## Collection boundary"
+            echo ""
+            echo "- Source selection: ${{ inputs.source_key || 'scheduled' }}"
+            echo "- Live source requests: 0"
+            echo "- Gemini calls: 0"
+            echo "- Production writes: 0"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  release-check:
+    if: always() && (github.event_name == 'workflow_dispatch' || vars.SCAM_RADAR_COLLECT_ENABLED == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Keep release path closed before activation
+        run: |
+          echo "No production release check ran: production database and deployment are disabled."
+          echo "### Release check: activation pending" >> "$GITHUB_STEP_SUMMARY"

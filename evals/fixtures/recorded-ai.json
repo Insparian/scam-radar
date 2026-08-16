@@ -1,0 +1,27 @@
+{
+  "million-protection-fake-customer-service": {
+    "relevance": {"relevant": true, "elderly_relevance": "high", "category": "telecom_scam", "confidence": 0.96, "reason": "冒充客服并诱导屏幕共享和转账。"},
+    "extraction": {"suspected_pattern_name": "百万保障假客服", "target_population": ["老年人", "移动支付用户"], "contact_channels": ["电话", "会议软件"], "impersonated_identity": "平台或保险客服", "hook": "百万保障即将扣费", "promise": "协助免费取消", "pressure_tactics": ["当天扣费", "持续通话"], "requested_actions": ["共享屏幕", "转账"], "money_path": "所谓安全账户", "credential_requests": ["验证码"], "technology_used": ["屏幕共享"], "regions": ["CN-GD", "CN-ZJ"], "victim_count": null, "reported_loss": null, "individual_loss": null, "case_date": "2026-08-15", "source_claim_type": "official_case", "official_status": "reported_case", "warning_signs": ["主动催促取消", "要求共享屏幕"], "recommended_actions": ["挂断", "自行联系官方客服"], "supporting_spans": [{"field_path": "hook", "start": 0, "end": 12, "excerpt": "百万保障即将自动扣费"}]},
+    "pattern_match": {"same_pattern": false, "confidence": 0.88, "reason_codes": ["insufficient_features"], "material_change": true, "changes": ["new_execution_step"]}
+  },
+  "family-emergency-impersonation": {
+    "relevance": {"relevant": true, "elderly_relevance": "high", "category": "impersonation", "confidence": 0.95, "reason": "冒充亲属制造事故紧急情况并索款。"},
+    "extraction": {"suspected_pattern_name": "冒充亲属紧急事故", "target_population": ["老年人", "亲属"], "contact_channels": ["电话"], "impersonated_identity": "子女或孙辈", "hook": "亲属发生事故", "promise": "付款后处理事故", "pressure_tactics": ["阻止核实", "要求保密"], "requested_actions": ["准备现金", "转账"], "money_path": "上门取现或转账", "credential_requests": [], "technology_used": [], "regions": ["CN-SH", "CN-JS"], "victim_count": null, "reported_loss": null, "individual_loss": null, "case_date": "2026-08-10", "source_claim_type": "media_report", "official_status": "reported_case", "warning_signs": ["要求保密", "上门取现"], "recommended_actions": ["联系本人", "请第二位家人核实"], "supporting_spans": [{"field_path": "requested_actions[0]", "start": 0, "end": 10, "excerpt": "要求老人准备现金"}]},
+    "pattern_match": {"same_pattern": false, "confidence": 0.82, "reason_codes": ["insufficient_features"], "material_change": true, "changes": ["new_execution_step"]}
+  },
+  "collectibles-high-price-buyback": {
+    "relevance": {"relevant": true, "elderly_relevance": "high", "category": "consumer_risk", "confidence": 0.94, "reason": "以高价回购为诱饵连续收费。"},
+    "extraction": {"suspected_pattern_name": "老物件高价回收", "target_population": ["老年人", "收藏品持有人"], "contact_channels": ["电话", "广告"], "impersonated_identity": "收藏品收购机构", "hook": "老物件可以高价回收", "promise": "保证成交", "pressure_tactics": ["名额有限", "手续即将完成"], "requested_actions": ["支付鉴定费", "支付解冻费"], "money_path": "连续预付费用", "credential_requests": [], "technology_used": [], "regions": ["CN-BJ"], "victim_count": null, "reported_loss": null, "individual_loss": null, "case_date": "2026-08-05", "source_claim_type": "official_case", "official_status": "enforcement", "warning_signs": ["不看实物就高估", "回购方先收费"], "recommended_actions": ["停止付款", "独立询价"], "supporting_spans": [{"field_path": "money_path", "start": 0, "end": 12, "excerpt": "连续收取鉴定和解冻费用"}]},
+    "pattern_match": {"same_pattern": false, "confidence": 0.86, "reason_codes": ["insufficient_features"], "material_change": true, "changes": ["new_packaging"]}
+  },
+  "free-health-check-sales-risk": {
+    "relevance": {"relevant": true, "elderly_relevance": "high", "category": "health_risk", "confidence": 0.91, "reason": "监管提示老年消费和夸大健康宣传风险。"},
+    "extraction": {"suspected_pattern_name": "免费体检引流高价保健品", "target_population": ["老年人"], "contact_channels": ["线下讲座", "电话"], "impersonated_identity": null, "hook": "免费体检和礼品", "promise": "改善健康", "pressure_tactics": ["限时优惠", "放大健康焦虑"], "requested_actions": ["现场预付"], "money_path": "高价购买产品", "credential_requests": [], "technology_used": [], "regions": ["CN-ZJ"], "victim_count": null, "reported_loss": null, "individual_loss": null, "case_date": "2026-07-25", "source_claim_type": "regulator_warning", "official_status": "warning", "warning_signs": ["把保健品说成治疗疾病", "阻止带资料回家"], "recommended_actions": ["向正规医疗机构核实", "保留宣传材料"], "supporting_spans": [{"field_path": "hook", "start": 0, "end": 10, "excerpt": "以免费体检吸引老年人"}]},
+    "pattern_match": {"same_pattern": false, "confidence": 0.76, "reason_codes": ["insufficient_features"], "material_change": true, "changes": ["new_packaging"]}
+  },
+  "fake-investment-advisor": {
+    "relevance": {"relevant": true, "elderly_relevance": "medium", "category": "financial_scam", "confidence": 0.98, "reason": "冒充投资顾问诱导向虚假平台充值。"},
+    "extraction": {"suspected_pattern_name": "假冒投资顾问", "target_population": ["投资者"], "contact_channels": ["群聊", "直播"], "impersonated_identity": "投资顾问", "hook": "内部荐股稳赚", "promise": "稳定高收益", "pressure_tactics": ["群内盈利展示"], "requested_actions": ["安装陌生应用", "充值"], "money_path": "个人账户或虚假平台", "credential_requests": [], "technology_used": ["仿冒投资应用"], "regions": ["CN-GD", "CN-FJ", "CN-HN"], "victim_count": null, "reported_loss": null, "individual_loss": null, "case_date": "2026-05-01", "source_claim_type": "court_record", "official_status": "judgment", "warning_signs": ["承诺稳赚", "向个人账户充值"], "recommended_actions": ["停止充值", "核验资质", "报警"], "supporting_spans": [{"field_path": "hook", "start": 0, "end": 8, "excerpt": "声称内部荐股稳赚"}]},
+    "pattern_match": {"same_pattern": false, "confidence": 0.9, "reason_codes": ["insufficient_features"], "material_change": true, "changes": ["new_mechanism"]}
+  }
+}

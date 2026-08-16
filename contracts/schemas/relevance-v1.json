@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scamradar.insparian.com/contracts/relevance-v1.json",
+  "title": "Scam Radar relevance result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["relevant", "elderly_relevance", "category", "confidence", "reason"],
+  "properties": {
+    "relevant": {"type": "boolean"},
+    "elderly_relevance": {"enum": ["high", "medium", "low", "none", "unknown"]},
+    "category": {
+      "type": ["string", "null"],
+      "enum": ["financial_scam", "telecom_scam", "impersonation", "consumer_risk", "health_risk", "illegal_fundraising", "unrelated", "unknown", null]
+    },
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 300}
+  }
+}

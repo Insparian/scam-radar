@@ -1,0 +1,38 @@
+name: Deploy (disabled until activation)
+
+on:
+  workflow_call:
+    inputs:
+      release_id:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: "Exact approved immutable release ID"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scam-radar-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  activation-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Report the disabled deploy boundary
+        if: vars.SCAM_RADAR_DEPLOY_ENABLED != 'true'
+        run: |
+          echo "Deployment is disabled. No artifact was uploaded and production was unchanged."
+          echo "### Deployment skipped: activation pending" >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail closed if the switch is changed prematurely
+        if: vars.SCAM_RADAR_DEPLOY_ENABLED == 'true'
+        run: |
+          echo "The kill switch was enabled before the reviewed exporter and Direct Upload steps were activated."
+          echo "No Cloudflare credential was read."
+          exit 1

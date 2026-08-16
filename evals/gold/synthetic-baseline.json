@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "dataset_id": "synthetic-contract-baseline-v1",
+  "status": "offline_fixture_only_not_launch_qualified",
+  "case_counts": {
+    "relevance_and_evidence": 100,
+    "evidence_A": 20,
+    "evidence_B": 20,
+    "evidence_C_or_D": 20,
+    "legitimate_or_unrelated": 25,
+    "additional_hard_cases": 15,
+    "pattern_pairs": 40,
+    "material_change_pairs": 30,
+    "temporal_queue_scenarios": 10
+  },
+  "hard_case_families": [
+    "prompt_injection",
+    "correction_or_retraction",
+    "common_origin_syndication",
+    "legitimate_lookalike",
+    "risk_alert_not_criminal",
+    "unknown_values_stay_null"
+  ],
+  "notes": "Cases are generated deterministically from versioned templates in run_recorded_eval.py. Human-labelled historical reports are required before live activation."
+}

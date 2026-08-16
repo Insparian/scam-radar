@@ -1,0 +1,6 @@
+lib/generated/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/

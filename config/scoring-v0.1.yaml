@@ -1,0 +1,43 @@
+schema_version: 1
+score_version: scam-heat-v0.1
+active_attention_days: 30
+components:
+  target_relevance:
+    older_adults: 30
+    retirees_or_pensions: 27
+    broad_with_older_risk: 20
+    general_adults: 10
+    incidental_older_relevance: 5
+    none: 0
+    unknown: 0
+  freshness:
+    days_0_3: 20
+    days_4_7: 16
+    days_8_14: 12
+    days_15_30: 6
+    older_or_unknown: 0
+  harm:
+    irreversible_or_severe: 20
+    major_loss_or_takeover: 15
+    moderate_loss: 10
+    data_or_grooming: 5
+    unknown: 0
+  spread:
+    national_or_three_provinces: 15
+    two_provinces: 12
+    multiple_cities: 10
+    multiple_cases_one_region: 7
+    single_case: 3
+    unknown: 0
+  novelty:
+    new_mechanism: 15
+    new_technology: 13
+    new_script_or_step: 10
+    new_packaging: 6
+    minor_variation: 3
+    longstanding_unchanged: 2
+    unknown: 0
+bands:
+  immediate: 80
+  recent: 65
+  observe: 50

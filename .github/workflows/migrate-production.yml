@@ -1,0 +1,35 @@
+name: Production migration (disabled until activation)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type APPLY FORWARD MIGRATIONS"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scam-radar-production-migration
+  cancel-in-progress: false
+
+jobs:
+  activation-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require exact human confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$CONFIRMATION" = "APPLY FORWARD MIGRATIONS" || {
+            echo "Confirmation did not match. Production was unchanged."
+            exit 1
+          }
+      - name: Keep production database untouched before activation
+        run: |
+          echo "Production migration is not activated. No Supabase credential was read."
+          echo "### Migration blocked: activation pending" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

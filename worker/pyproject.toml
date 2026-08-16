@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scam-radar"
+version = "0.1.0"
+description = "Offline-first scam intelligence batch pipeline"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "beautifulsoup4>=4.14,<5",
+  "feedparser>=6.0,<7",
+  "jsonschema[format]>=4.25,<5",
+  "lxml>=6,<7",
+  "pydantic>=2.13,<3",
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.19,<2",
+  "pytest>=9,<10",
+  "pytest-cov>=7,<8",
+  "ruff>=0.15,<1",
+]
+
+[project.scripts]
+scam-radar = "scam_radar.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scam_radar"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers --disable-warnings"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["RUF001"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["scam_radar"]
+
+[[tool.mypy.overrides]]
+module = ["feedparser", "jsonschema", "yaml"]
+ignore_missing_imports = true

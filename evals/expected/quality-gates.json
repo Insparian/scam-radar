@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "relevance_recall_min": 0.90,
+  "relevance_precision_min": 0.80,
+  "pattern_match_precision_min": 0.90,
+  "pattern_match_recall_min": 0.85,
+  "cd_public_block_rate": 1.0,
+  "public_eligibility_precision_min": 0.95,
+  "claim_support_rate": 1.0,
+  "material_change_f1_min": 0.85,
+  "heat_determinism_rate": 1.0,
+  "expected_heat_band_rate_min": 0.90,
+  "queue_top_group_rate_min": 0.90,
+  "severe_unsupported_accusations_max": 0
+}

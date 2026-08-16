@@ -1,0 +1,95 @@
+name: Offline CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SCAM_RADAR_ENV: ci
+      SCAM_RADAR_COLLECT_ENABLED: "false"
+      SCAM_RADAR_AI_ENABLED: "false"
+      SCAM_RADAR_DEPLOY_ENABLED: "false"
+      NEXT_PUBLIC_RELEASE_ID: fixture-2026-08-16-001
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use Node 24
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+          package-manager-cache: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install pinned build tools
+        run: python -m pip install uv==0.12.5
+      - name: Install locked dependencies
+        run: |
+          uv sync --project worker --locked --extra dev
+          npm ci --prefix web
+          cd web
+          npx playwright install --with-deps chromium
+      - name: Verify repository and applications
+        run: |
+          make check
+          make test
+          make eval
+          make demo
+      - name: Write offline summary
+        if: always()
+        run: |
+          {
+            echo "## Scam Radar offline CI"
+            echo ""
+            echo "- External collection: disabled"
+            echo "- Gemini: disabled"
+            echo "- Production database: not contacted"
+            echo "- Deployment: disabled"
+            echo "- Fixture release: fixture-2026-08-16-001"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  postgres-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use Node 24
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Rebuild local Supabase from zero
+        run: npx --yes supabase@2.101.0 start
+      - name: Lint the live local database
+        run: npx --yes supabase@2.101.0 db lint --local --level warning
+      - name: Stop local Supabase
+        if: always()
+        run: npx --yes supabase@2.101.0 stop --no-backup
+      - name: Record database scope
+        if: always()
+        run: |
+          {
+            echo "## PostgreSQL contract"
+            echo ""
+            echo "This job uses disposable local containers only; it never links to production."
+          } >> "$GITHUB_STEP_SUMMARY"

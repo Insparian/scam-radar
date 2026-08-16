@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scamradar.insparian.com/contracts/extraction-v1.json",
+  "title": "Scam Radar structured extraction v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suspected_pattern_name", "target_population", "contact_channels", "hook", "promise", "pressure_tactics", "requested_actions", "money_path", "credential_requests", "technology_used", "regions", "source_claim_type", "official_status", "warning_signs", "recommended_actions", "supporting_spans"],
+  "properties": {
+    "suspected_pattern_name": {"type": ["string", "null"], "maxLength": 120},
+    "target_population": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "contact_channels": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "impersonated_identity": {"type": ["string", "null"], "maxLength": 120},
+    "hook": {"type": ["string", "null"], "maxLength": 300},
+    "promise": {"type": ["string", "null"], "maxLength": 300},
+    "pressure_tactics": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "requested_actions": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "money_path": {"type": ["string", "null"], "maxLength": 200},
+    "credential_requests": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "technology_used": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "regions": {"type": "array", "items": {"type": "string"}, "maxItems": 34},
+    "victim_count": {"type": ["integer", "null"], "minimum": 0},
+    "reported_loss": {"type": ["number", "null"], "minimum": 0},
+    "individual_loss": {"type": ["number", "null"], "minimum": 0},
+    "case_date": {"type": ["string", "null"], "format": "date"},
+    "source_claim_type": {"enum": ["official_case", "regulator_warning", "court_record", "media_report", "unknown"]},
+    "official_status": {"enum": ["warning", "reported_case", "enforcement", "charge", "judgment", "unknown"]},
+    "warning_signs": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "recommended_actions": {"type": "array", "items": {"type": "string"}, "maxItems": 10},
+    "supporting_spans": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field_path", "start", "end", "excerpt"],
+        "properties": {
+          "field_path": {"type": "string"},
+          "start": {"type": "integer", "minimum": 0},
+          "end": {"type": "integer", "minimum": 1},
+          "excerpt": {"type": "string", "maxLength": 280}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scamradar.insparian.com/contracts/sources-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sources"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/source"}
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "display_name", "publisher_group", "source_type", "authority_tier", "languages", "regions", "enabled", "collector", "policy", "limits", "parser"],
+      "properties": {
+        "key": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "display_name": {"type": "string", "minLength": 1},
+        "publisher_group": {"type": "string", "minLength": 1},
+        "source_type": {"enum": ["police", "regulator", "court", "state_media", "media"]},
+        "authority_tier": {"enum": ["A1", "A2", "B", "C"]},
+        "languages": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "regions": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "enabled": {"type": "boolean"},
+        "collector": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "entry_url"],
+          "properties": {
+            "type": {"enum": ["rss", "api", "sitemap", "list_page", "html"]},
+            "entry_url": {"type": "string", "format": "uri", "pattern": "^https://"}
+          }
+        },
+        "policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["terms_url", "robots_url", "collection_allowed", "reviewed_at"],
+          "properties": {
+            "terms_url": {"type": ["string", "null"], "format": "uri"},
+            "robots_url": {"type": ["string", "null"], "format": "uri"},
+            "collection_allowed": {"type": "boolean"},
+            "reviewed_at": {"type": ["string", "null"], "format": "date"}
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["first_run_lookback_days", "max_items_per_run", "min_request_interval_ms", "timeout_seconds"],
+          "properties": {
+            "first_run_lookback_days": {"type": "integer", "minimum": 1, "maximum": 90},
+            "max_items_per_run": {"type": "integer", "minimum": 1, "maximum": 50},
+            "min_request_interval_ms": {"type": "integer", "minimum": 1500},
+            "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 20}
+          }
+        },
+        "parser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["config", "fixture"],
+          "properties": {
+            "config": {"type": "object"},
+            "fixture": {"type": "string", "pattern": "^evals/fixtures/sources/"}
+          }
+        }
+      }
+    }
+  }
+}
