@@ -177,9 +177,12 @@ export default function HomePage() {
             </div>
             <div className="method-cards">
               <article>
-                <span className="method-letter">E</span>
+                <span className="method-letter">证</span>
                 <div>
-                  <h3>Evidence Gate · 证据门槛</h3>
+                  <h3>
+                    <span>证据门槛</span>
+                    <span className="method-term">Evidence Gate</span>
+                  </h3>
                   <p>
                     A 表示有权威来源；B 表示有多个独立可信来源。C/D
                     只留在内部，不会包装成公开骗局。
@@ -187,19 +190,25 @@ export default function HomePage() {
                 </div>
               </article>
               <article>
-                <span className="method-letter">H</span>
+                <span className="method-letter">热</span>
                 <div>
-                  <h3>Scam Heat · 关注优先级</h3>
+                  <h3>
+                    <span>关注优先级</span>
+                    <span className="method-term">Scam Heat</span>
+                  </h3>
                   <p>
                     由代码按目标人群、最近变化、伤害、传播和新颖程度计算。Heat
-                    高不代表事实更真。
+                    分高，只代表现在更值得关注，不代表证据更强。
                   </p>
                 </div>
               </article>
               <article>
-                <span className="method-letter">人</span>
+                <span className="method-letter">审</span>
                 <div>
-                  <h3>Human Review · 人工审核</h3>
+                  <h3>
+                    <span>人工审核</span>
+                    <span className="method-term">Human Review</span>
+                  </h3>
                   <p>
                     只有审核员确认证据、措辞和保护建议后，才会进入下一次不可变的公开版本。
                   </p>

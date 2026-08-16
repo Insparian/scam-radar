@@ -660,9 +660,20 @@ a {
 }
 
 .method-cards h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
   margin: 0 0 8px;
   color: white;
   font-size: 19px;
+}
+
+.method-cards .method-term {
+  color: #8fd0c8;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .method-cards p {
