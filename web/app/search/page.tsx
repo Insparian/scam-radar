@@ -8,7 +8,7 @@ import { SearchClient } from "./search-client";
 
 export const metadata: Metadata = {
   title: "查一查",
-  description: "用一个简单关键词，在骗局雷达的已审核模式里查找相似套路。",
+  description: "用一个简单关键词，在骗局雷达的公开数据库里查找相似套路。",
   alternates: { canonical: "/search/" },
 };
 

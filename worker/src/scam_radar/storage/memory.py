@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from scam_radar.domain import NormalizedItem, ReviewCandidate
+from scam_radar.domain import NormalizedItem, PolicyDecision, ReviewCandidate
 
 
 @dataclass
@@ -12,6 +12,7 @@ class MemoryStore:
     item_versions: dict[tuple[str, str], NormalizedItem] = field(default_factory=dict)
     content_hashes: dict[str, tuple[str, str]] = field(default_factory=dict)
     review_items: dict[str, ReviewCandidate] = field(default_factory=dict)
+    policy_decisions: dict[tuple[str, str], PolicyDecision] = field(default_factory=dict)
 
     def upsert_item(self, item: NormalizedItem) -> bool:
         key = (item.source_key, item.identity_key)
@@ -29,4 +30,11 @@ class MemoryStore:
         if candidate.dedupe_key in self.review_items:
             return False
         self.review_items[candidate.dedupe_key] = candidate
+        return True
+
+    def upsert_policy_decision(self, decision: PolicyDecision) -> bool:
+        key = (decision.policy_hash, decision.input_hash)
+        if key in self.policy_decisions:
+            return False
+        self.policy_decisions[key] = decision
         return True

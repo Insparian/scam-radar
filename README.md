@@ -1,6 +1,6 @@
 # 骗局雷达 / Scam Radar
 
-骗局雷达把经过选择的可信公开报道压缩成少量、可人工审核、可追溯的 **Scam Patterns**。它不是诈骗新闻站，也不会让 AI 判断某个人、公司或产品“就是诈骗”。
+骗局雷达把经过选择的可信公开报道压缩成少量、可验证、可追溯的 **Scam Patterns**。它不是诈骗新闻站，也不会让 AI 判断某个人、公司或产品“就是诈骗”。确定性 Policy Engine 处理可证明安全的常规类别，只有例外才交给人决定。
 
 ## 当前状态
 
@@ -12,7 +12,9 @@
 - Cloudflare Pages 部署或 DNS 修改；
 - 任何 analytics、telemetry 或用户搜索词上传。
 
-离线构建的目标是先证明核心链路：来源条目 → 去重 → AI proposal → Evidence Gate → Scam Heat → 人工审核 → 同一 `release_id` 的静态页面与本地搜索。
+离线构建的目标是先证明核心链路：来源条目 → 去重 → AI proposal → Evidence Gate → Scam Heat → Policy Engine → safe/review/blocked 分流 → 不可变修订与同一 `release_id` 的静态页面和本地搜索。
+
+V0.1 的 `safe_to_automate` 只运行影子模式：系统记录固定规则“本可自动处理”的结果，但不会授予自动发布权限，仍需人工确认。模型置信度永远不能提权；低或未知置信度只能把原本安全的候选降级为 `review_required`。数据库的 live-policy allowlist 当前为空；未来也必须用 forward migration 绑定获批的精确 policy version/hash 和 Evidence Gate version，不能靠一个布尔开关放行。
 
 ## 最短使用路径
 
@@ -52,7 +54,8 @@ make web
 
 - Public pages 和 search index 必须来自同一个 immutable `release_id`。
 - Public search 只在浏览器本地运行，不发送或保存搜索词。
-- AI 只提出建议；Evidence Gate 和登录的人工 reviewer 决定可否发布。
+- AI 只提出建议；Evidence Gate 与确定性 Policy Engine 决定发布边界，登录的人只处理例外及 V0.1 影子确认。
+- `evidence.last_verified_at`、`revision.verified_at` 和 `release.published_at` 各有独立含义；最后一个表示内容冻结进入不可变 public-release manifest 的时间，Cloudflare 部署另有时间。公开“信息核实至”取当前修订所有 claim-support 证据核实时间的最小值。证据可能在修订判定后再次核实，所以前两个时间没有固定先后，但都必须存在且不晚于 release freeze。
 - Scam Heat 表示“现在是否值得注意”，不表示“真假”。
 - Raw HTML 只可短暂处理，不能永久存储或提交。
 - 密钥只放在 ignored local env 或 GitHub Encrypted Secrets；任何 `NEXT_PUBLIC_` 值都会进入公开网页。
@@ -67,7 +70,7 @@ make web
 | `web/` | Next.js static public site 和 client-only reviewer UI |
 | `worker/` | 短生命周期 Python batch pipeline 和 tests |
 | `supabase/` | Forward-only migrations、seed 和 database contract tests |
-| `config/` | Reviewed sources、taxonomy、models 和 scoring behavior |
+| `config/` | Reviewed sources、taxonomy、models、scoring 和 publication policy behavior |
 | `prompts/` | Provider-neutral prompt prose |
 | `contracts/schemas/` | Versioned AI JSON Schemas |
 | `evals/` | Gold Set、recorded responses、expected results 和 reports |

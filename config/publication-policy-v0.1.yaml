@@ -1,0 +1,25 @@
+schema_version: 1
+policy_version: publication-policy-v0.1
+shadow_mode: true
+live_auto_publish_enabled: false
+
+safe_to_automate:
+  review_types:
+    - pattern_update
+  evidence_levels:
+    - A
+  require_existing_public_pattern: true
+  require_no_material_change: true
+  require_no_public_copy_change: true
+  require_all_claims_supported: true
+  require_all_supporting_evidence_verified: true
+  deny_named_entity_risk: true
+  deny_legal_status_change: true
+  deny_evidence_level_change: true
+  deny_source_regression: true
+  deny_merge_or_split: true
+
+confidence_downgrade:
+  enabled: true
+  minimum_relevance_confidence: 0.90
+  minimum_pattern_match_confidence: 0.85

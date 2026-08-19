@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-08-16
 
+> **Amended by ADR-007:** Human identity is no longer a permanent prerequisite for every verification. A versioned Policy Engine may eventually authorize a narrowly defined safe class through separate database provenance. V0.1 remains shadow-only and still requires human confirmation. All RLS, Evidence/Publish Gate, immutability, and exact-release guarantees below remain active.
+
 ## Decision
 
 Use Supabase PostgreSQL as the private system of record, but make an immutable static release—not a database query—the only public publishing plane.
@@ -14,12 +16,12 @@ Authorization and mutation rules:
 - Reviewer writes use named transactional RPCs. Revoke default function execution from `public` and `anon`, then grant only the required function signatures to `authenticated`.
 - Prefer `security invoker`. A narrowly justified `security definer` function must set `search_path = ''`, schema-qualify every object, validate `auth.uid()`, verify optimistic `row_version`, and append its audit event in the same transaction.
 - Database triggers reject update/delete of approved `pattern_revisions` and immutable release-manifest rows. A correction creates a new revision and a new release.
-- Approval triggers require `auth.uid() = approved_by` and an enabled admin. A worker/secret-key request without a human JWT therefore cannot manufacture an approval, even though its key bypasses RLS.
+- Human verification triggers require `auth.uid()` to match an enabled admin. A separate policy-verification transaction requires a valid append-only `safe_to_automate` decision and never creates a human identity. A generic worker/secret-key request can satisfy neither path merely because its key bypasses RLS.
 - Use current `sb_publishable_...` and `sb_secret_...` keys for new projects. Legacy `anon`/`service_role` names exist only in one compatibility adapter.
 
 ## Release invariant
 
-`prepare_public_release()` copies the previous deployed manifest, applies only explicitly approved revisions/unpublishes, pins one Heat snapshot per pattern, and freezes an exact `release_id`. Export, static pages, detail routes, and search all use only that ID. Release status bookkeeping may advance; manifest content never mutates.
+`prepare_public_release()` copies the previous deployed manifest, applies only explicitly authorized verified revisions/unpublishes, pins one Heat and evidence-freshness snapshot per pattern, and freezes an exact `release_id`. Export, static pages, detail routes, and search all use only that ID. Release status bookkeeping may advance; manifest content never mutates.
 
 ## Why
 

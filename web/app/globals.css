@@ -1041,7 +1041,7 @@ a {
   color: var(--teal);
 }
 
-.reviewed-date {
+.verified-date {
   color: var(--muted);
   font-size: 12px;
 }
@@ -1327,6 +1327,13 @@ a {
 .source-meta strong {
   color: var(--teal-dark);
   font-size: 12px;
+}
+
+.source-verified {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .evidence-list h3 {
@@ -1827,6 +1834,42 @@ body:has(.admin-app) > .site-header {
   margin: 16px 0 6px;
   font-family: "Songti SC", serif;
   font-size: 32px;
+}
+
+.policy-route {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) 1fr;
+  gap: 18px;
+  margin: 20px 0 0;
+  border-left: 4px solid var(--amber);
+  background: var(--amber-soft);
+  padding: 15px 17px;
+}
+
+.policy-route div {
+  display: grid;
+  gap: 4px;
+}
+
+.policy-route span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.policy-route strong {
+  color: var(--ink);
+  font:
+    800 12px/1.4 ui-monospace,
+    monospace;
+}
+
+.policy-route p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 10px;
+  line-height: 1.7;
 }
 
 .review-summary {
@@ -2578,6 +2621,10 @@ body:has(.admin-app) > .site-header {
   }
 
   .review-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .policy-route {
     grid-template-columns: 1fr;
   }
 

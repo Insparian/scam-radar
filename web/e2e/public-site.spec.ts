@@ -12,10 +12,15 @@ test("home, detail, and search use the same immutable release", async ({
     page.getByRole("heading", { name: /最近有什么骗局/ }),
   ).toBeVisible();
   await expect(page.getByText(releaseId)).toBeVisible();
+  await expect(page.getByText("Policy Engine", { exact: true })).toBeVisible();
 
   const metadata = await request.get("/release.json");
   expect(metadata.ok()).toBeTruthy();
-  expect((await metadata.json()).release_id).toBe(releaseId);
+  const releaseMetadata = await metadata.json();
+  expect(releaseMetadata.release_id).toBe(releaseId);
+  expect(releaseMetadata.schema_version).toBe(2);
+  expect(releaseMetadata.manifest_hash).toMatch(/^[a-f0-9]{64}$/);
+  expect(releaseMetadata.published_at).toMatch(/^2026-/);
 
   await page.goto("/search/");
   await page.getByLabel("只输入一个或几个关键词").fill("百万保障");
@@ -30,6 +35,12 @@ test("home, detail, and search use the same immutable release", async ({
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "百万保障",
   );
+  await expect(
+    page.getByText("Last Verified / 信息核实至", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Release / 当前版本形成于", { exact: true }),
+  ).toBeVisible();
 });
 
 test("no-result state gives a safe next action without claiming safety", async ({
@@ -64,6 +75,16 @@ test("key public pages have no automatically detectable serious accessibility is
 
 test("admin fixture decisions are visibly non-durable", async ({ page }) => {
   await page.goto("/admin/review/");
+  await expect(
+    page.getByText("POLICY ENGINE → safe to automate", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("V0.1 影子模式：即使符合自动路径，也不会获得发布权限。"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /冒充亲属紧急事故骗局/ }).click();
+  await expect(
+    page.getByText("POLICY ENGINE → review required", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "先保留，等待更多证据" }).click();
   await expect(page.getByRole("status")).toContainText("没有写入数据库");
 });

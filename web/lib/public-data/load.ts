@@ -23,13 +23,25 @@ function assertRelease(value: unknown): asserts value is PublicRelease {
     throw new Error("Release must be an object");
   const candidate = value as Partial<PublicRelease>;
   if (
-    candidate.schema_version !== 1 ||
-    typeof candidate.release_id !== "string"
+    candidate.schema_version !== 2 ||
+    typeof candidate.release_id !== "string" ||
+    typeof candidate.manifest_hash !== "string" ||
+    !/^[a-f0-9]{64}$/.test(candidate.manifest_hash) ||
+    typeof candidate.generated_at !== "string" ||
+    typeof candidate.published_at !== "string"
   ) {
     throw new Error("Unsupported public release schema");
   }
   if (!Array.isArray(candidate.patterns))
     throw new Error("Release patterns must be an array");
+  const generatedAt = Date.parse(candidate.generated_at);
+  const publishedAt = Date.parse(candidate.published_at);
+  if (!Number.isFinite(generatedAt) || !Number.isFinite(publishedAt)) {
+    throw new Error("Release timestamps must be valid ISO dates");
+  }
+  if (generatedAt > publishedAt) {
+    throw new Error("Release cannot be published before it is generated");
+  }
   const slugs = candidate.patterns.map((pattern) => pattern.slug);
   if (new Set(slugs).size !== slugs.length)
     throw new Error("Release slugs must be unique");
@@ -39,6 +51,49 @@ function assertRelease(value: unknown): asserts value is PublicRelease {
     )
   ) {
     throw new Error("Static release may contain only Evidence A/B patterns");
+  }
+  for (const pattern of candidate.patterns) {
+    if (!pattern.evidence.length) {
+      throw new Error("Every public pattern must have supporting evidence");
+    }
+    if (
+      typeof pattern.verified_at !== "string" ||
+      typeof pattern.last_verified_at !== "string" ||
+      pattern.evidence.some((item) => typeof item.last_verified_at !== "string")
+    ) {
+      throw new Error(
+        `Pattern ${pattern.slug} is missing verification timestamps`,
+      );
+    }
+    const revisionVerifiedAt = Date.parse(pattern.verified_at);
+    const publicLastVerifiedAt = Date.parse(pattern.last_verified_at);
+    const evidenceVerifiedTimes = pattern.evidence.map((item) =>
+      Date.parse(item.last_verified_at),
+    );
+    if (
+      !Number.isFinite(revisionVerifiedAt) ||
+      !Number.isFinite(publicLastVerifiedAt) ||
+      evidenceVerifiedTimes.some((timestamp) => !Number.isFinite(timestamp))
+    ) {
+      throw new Error(
+        `Pattern ${pattern.slug} has invalid verification timestamps`,
+      );
+    }
+    const conservativeVerifiedAt = Math.min(...evidenceVerifiedTimes);
+    if (publicLastVerifiedAt !== conservativeVerifiedAt) {
+      throw new Error(
+        `Pattern ${pattern.slug} has a non-conservative last_verified_at`,
+      );
+    }
+    if (
+      publicLastVerifiedAt > publishedAt ||
+      revisionVerifiedAt > publishedAt ||
+      evidenceVerifiedTimes.some((timestamp) => timestamp > publishedAt)
+    ) {
+      throw new Error(
+        `Pattern ${pattern.slug} has a verification timestamp after its release`,
+      );
+    }
   }
 }
 

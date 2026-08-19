@@ -2,7 +2,7 @@
 
 ## Implementation Brief — Scam Intelligence Engine & Public Database
 
-**Status:** Ready for implementation; external activation still requires Rui approval  
+**Status:** Implementation baseline amended 2026-08-16; external activation still requires Rui approval
 **Owner:** Insparian  
 **Primary market:** 中国大陆  
 **Primary users:** 中老年人，以及替父母查询、核实和转发信息的成年子女  
@@ -10,6 +10,48 @@
 **Repository / project name:** `scam-radar`  
 **Infrastructure target:** approximately `$0/month` during V0.1  
 **Document date:** 2026-08-15
+
+---
+
+## Governing 2026-08-16 architecture amendment
+
+`docs/North Star.md` is authoritative. This amendment and [ADR-007](docs/decisions/007-policy-engine-human-exception.md) supersede every sentence below that describes human review as a permanent mandatory architecture stage.
+
+The required publication architecture is:
+
+```text
+Scam Intelligence Engine
+         ↓
+Deterministic Policy Engine
+         ↓
+  ┌──────┴──────────────┐
+  ↓                     ↓
+safe_to_automate   review_required
+  ↓                     ↓
+policy verification  human decision
+  └──────────┬──────────┘
+             ↓
+immutable verified revision
+             ↓
+exact immutable public release
+             ↓
+Public Database (static artifact)
+```
+
+V0.1 runs `safe_to_automate` in shadow mode. It records what the deterministic rules would have authorized, but `live_auto_publish_enabled` remains false and a human still confirms publication. This temporary confirmation is a rollout control, not the permanent architecture. Live automatic authorization requires a later explicit decision for a narrow policy class after measured live-data performance, plus a database allowlist entry binding its exact `policy_version`, `policy_hash`, and `gate_version`; a boolean switch is never sufficient.
+
+Model confidence never grants or increases publication authority. Low or missing confidence may only downgrade an otherwise eligible safe candidate to `review_required`. High confidence cannot upgrade a candidate, override the Evidence Gate, or turn `blocked` into a publishable state.
+
+Time semantics are locked:
+
+- `pattern_evidence.last_verified_at` is the actual evidence-check time;
+- `pattern_revisions.verified_at` is the internal policy/human verification time;
+- `public_releases.published_at` is when the revision is frozen into an immutable public-release manifest; Cloudflare deployment time is separate; and
+- public `pattern.last_verified_at` is the minimum verification time across evidence supporting the current revision's claims.
+
+Evidence can be rechecked after a revision decision. Therefore `pattern_evidence.last_verified_at` and `pattern_revisions.verified_at` are independently meaningful and have no required order relative to each other; both must be present and no later than the release manifest freeze.
+
+Both policy and human paths use the same Evidence/Publish Gate, immutable revision, publication-change, exact-release, audit, rollback, and same-`release_id` boundaries. Policy decisions and human events retain distinct provenance; automation never impersonates a reviewer.
 
 ---
 
@@ -62,13 +104,13 @@ A user should understand within roughly 60 seconds:
 - 现在先做什么；
 - 最近为什么值得注意；
 - 这些结论来自哪里；
-- 这条记录最后由人审核是什么时候。
+- 这条记录所依赖的信息最保守核实到什么时候。
 
 ### 1.3 Core product hypothesis
 
 V0.1 validates one question:
 
-> Can a free, scheduled pipeline compress hundreds of public-source items into a small, high-quality Review Queue and a useful public scam-pattern database without publishing unsupported claims?
+> Can a free, scheduled pipeline compress hundreds of public-source items into a small, high-quality exception queue and a useful public scam-pattern database without publishing unsupported claims?
 
 The key technical outcome is **Attention Compression**:
 
@@ -79,7 +121,9 @@ dozens of relevant items
           ↓
 a handful of candidate patterns or material updates
           ↓
-2–5 minutes of human review
+deterministic Policy Engine routing
+          ↓
+only exceptions consume human attention
 ```
 
 The success metric is not article volume. A day with no genuinely important alert is an acceptable and trustworthy outcome.
@@ -132,7 +176,7 @@ These are product constraints, not suggestions.
 | AI | Gemini behind a provider interface | Free first; no architecture-level vendor lock-in. |
 | Truth | Evidence Gate, never the LLM or Heat score | Prevents confident but unsupported accusations. |
 | Priority | Deterministic Scam Heat computed by code | Makes ranking explainable and testable. |
-| Publication | Human approval required | One false accusation costs more trust than several missed items. |
+| Publication | Deterministic Policy Engine; human by exception; `safe_to_automate` shadow-only in V0.1 | Compresses human attention without letting AI or unsupported certainty gain authority. |
 | Search | Exact, alias, and keyword matching first | Safer than an AI chatbot making a binary fraud judgment. |
 | Raw content | Do not permanently store full HTML | Protects the free database quota and reduces copyright/security risk. |
 | Distribution | Social video generation and publishing are outside V0.1 | Build the intelligence engine before the loudspeaker. |
@@ -158,11 +202,11 @@ Two rules must remain separate everywhere in code and UI:
 - Evidence origin / syndication grouping so copied reports count once.
 - Evidence Gate levels A–D with machine-readable reason codes.
 - Deterministic Scam Heat 0–100 with component breakdown.
-- A small authenticated Review Queue.
-- Human actions: create pattern, approve update, merge, reject, hold for evidence, edit, archive, and unpublish.
-- An append-only editorial audit trail.
+- A small authenticated exception Review Queue plus shadow-confirmation view.
+- Human exception actions: create pattern, approve update, merge, reject, hold for evidence, edit, archive, and unpublish.
+- Append-only, distinct policy-decision and human-event audit trails.
 - A public database with home, detail, and search surfaces.
-- Source links, last-reviewed dates, evidence wording, and clear uncertainty.
+- Source links, conservative last-verified dates, release published-at, evidence wording, and clear uncertainty.
 - Offline fixture demo, Gold Set evaluation, CI, scheduled collection, and static deployment.
 - Operational summaries, quota protection, kill switches, and failure runbooks.
 
@@ -180,7 +224,7 @@ V0.1 does **not** include:
 - active collection from 微信、视频号、微博、小红书、抖音、贴吧、论坛、微信群、公众号 or private communities;
 - authenticated scraping, paywall bypass, CAPTCHA solving, proxy rotation, or anti-bot evasion;
 - automatic public accusation of a person, company, or product;
-- unattended publication;
+- live unattended publication in V0.1; the architecture and shadow records must still support a later narrowly activated safe policy class;
 - push notifications, newsletters, personalization, recommendations, or public API;
 - video generation, AI presenter, AI short drama, text-to-speech, or social copy generation;
 - video号、小红书、抖音 or any other social-platform publishing automation;
@@ -223,11 +267,16 @@ GitHub Actions — three scheduled runs/day
                  ↓
      Deterministic Scam Heat v0.1
                  ↓
-             Review Queue
+      Deterministic Policy Engine
                  ↓
-             Human review
+       ┌─────────┴─────────┐
+       ↓                   ↓
+ safe_to_automate     review_required
+       ↓                   ↓
+ policy verification   human decision
+       └─────────┬─────────┘
                  ↓
-      Approved public data snapshot
+      Immutable verified snapshot
                  ↓
  Next.js static export → Cloudflare Pages
                  ↓
@@ -242,8 +291,8 @@ No component runs continuously. GitHub Actions runners start, work, persist stat
 |---|---|---|
 | GitHub Free | Repository, Issues, review, history | Store secrets in code |
 | GitHub Actions | CI, three daily batch runs, live eval, static build and Pages deployment | Serve user requests or retain local state |
-| Supabase Free | PostgreSQL system of record, Auth, RLS, reviewer RPCs, trusted release export | Crawl sites or expose privileged keys to browsers |
-| Gemini free tier | Relevance, extraction, pattern comparison; optional embedding interface | Establish truth, set final Heat, merge, approve, or publish |
+| Supabase Free | PostgreSQL system of record, Auth, RLS, policy/human RPCs, immutable decision provenance, trusted release export | Crawl sites or expose privileged keys to browsers |
+| Gemini free tier | Relevance, extraction, pattern comparison; optional embedding interface | Establish truth, set final Heat, determine policy eligibility, verify, or publish |
 | Cloudflare Pages Free | Serve the static public and admin frontend | Hold the Supabase secret key or Gemini key in browser assets |
 | `scamradar.insparian.com` | Canonical public URL | Change the `insparian.com` apex site |
 
@@ -267,19 +316,19 @@ Reason:
 
 - Cloudflare Pages supports static Next.js exports.
 - Full-stack Next.js would move the project toward Cloudflare Workers, which is outside the locked V0.1 infrastructure.
-- The public data changes only after human approval, so rebuilding a static snapshot is acceptable.
+- Public data changes only through a verified immutable release, so rebuilding a static snapshot is acceptable.
 
 Publication behavior:
 
-1. Reviewer approval creates an immutable approved `pattern_revision`; later edits must create and re-approve another revision.
-2. A transactional `prepare_public_release()` copies the last deployed release manifest, applies approved revisions/unpublishes, pins one Heat snapshot per pattern, and returns an immutable `release_id`.
+1. Policy or human verification creates an immutable verified `pattern_revision`; later edits must create and verify another revision. V0.1 shadow-safe candidates still require authenticated human confirmation.
+2. A transactional `prepare_public_release()` copies the last deployed release manifest, applies authorized verified revisions/unpublishes, pins one Heat snapshot and evidence-freshness snapshot per pattern, and returns an immutable `release_id`.
 3. A trusted exporter fetches that exact release into local JSON and then drops its database secret; `generateStaticParams()` reads only the JSON, and `dynamicParams = false` makes the available detail routes explicit.
 4. `deploy.yml` embeds `release_id`, builds that exact release into static pages, and deploys it to Pages.
 5. The production upload makes static pages and the same artifact’s local search index public together. After smoke tests, `record_deployed_release(release_id, deployment_id)` records what is already live; a failed record step enters reconciliation rather than pretending the upload did not happen.
 6. Code merged to `main` also runs CI and redeploys the currently active content release with the new code.
-7. The collection workflow checks for approved revisions/unpublishes not yet included in the deployed release and for deterministic freshness-decay changes that alter public Heat ordering; it prepares and deploys a new release when needed. Maximum normal content lag is therefore one collection interval; `workflow_dispatch` supports an urgent manual publish/unpublish.
+7. The collection workflow checks for authorized verified revisions/unpublishes not yet included in the deployed release and for deterministic freshness-decay changes that alter public Heat ordering; it prepares and deploys a new release when needed. Maximum normal content lag is therefore one collection interval; `workflow_dispatch` supports an urgent manual publish/unpublish.
 
-The admin UI must clearly say either “已公开” or “已批准，等待下一次自动发布”; it must not imply instant publication. Static pages and local public search must always come from the same immutable `release_id`, never from mutable draft rows.
+The admin UI must show `safe_to_automate`, `review_required`, or `blocked` plus policy version/reasons and clearly distinguish “已验证，等待发布” from “已公开”. It must not imply instant publication. Static pages and local public search must always come from the same immutable `release_id`, never from mutable draft rows.
 
 ### 4.4 AI provider boundary
 
@@ -317,7 +366,7 @@ These flows must be shown to Rui again before the first live run:
 | GitHub Actions runner | Registered public source sites | URL, request headers, runner IP, request timing | Collect allowed public pages |
 | GitHub Actions runner | Gemini API / Google | Bounded, cleaned public-source text plus extraction prompt | Classification and structured extraction |
 | GitHub Actions runner | Supabase | Source metadata, cleaned relevant text, hashes, AI outputs, evidence, scores, job logs | Persist system state |
-| Reviewer browser | Supabase | Auth session and review actions | Review and approve records |
+| Human exception browser | Supabase | Auth session, exception decisions, and V0.1 shadow confirmations | Verify exception records without exposing private data |
 | GitHub Actions runner | Cloudflare Pages | Compiled static web assets | Deploy website |
 | Public browser | Cloudflare | Page, asset, and immutable static search-index requests | Serve and search one public release |
 
@@ -680,10 +729,11 @@ For each run:
 14. Propose a new pattern, an update, a duplicate, or a needs-review match.
 15. Evaluate Evidence Gate eligibility.
 16. Calculate Scam Heat from versioned factual features.
-17. Create or update one deduplicated Review Queue item.
-18. Revalidate a bounded batch of due accepted evidence URLs; a changed, corrected, withdrawn, or unavailable source creates a highest-priority `gate_regression` item and never silently rewrites the accepted record.
-19. Commit a source cursor only after that source completes successfully.
-20. Write source-level and run-level summaries; release the lease.
+17. Run the versioned deterministic Policy Engine and append one hashed `safe_to_automate`, `review_required`, or `blocked` decision.
+18. Create or update one deduplicated exception Review Queue item. During V0.1 shadow mode, also queue a safe candidate for confirmation without changing its recorded policy outcome.
+19. Revalidate a bounded batch of due accepted evidence URLs; a changed, corrected, withdrawn, or unavailable source blocks automation, creates a highest-priority `gate_regression` item, and never silently rewrites the accepted record.
+20. Commit a source cursor only after that source completes successfully.
+21. Write source-level and run-level summaries, including policy/shadow counts; release the lease.
 
 ### 8.5 Relevance contract
 
@@ -731,7 +781,7 @@ recommended_actions[]
 supporting_spans[]
 ```
 
-Each factual field must be `null`, `unknown`, or linked to a short supporting span from the source. Model output remains a proposal until accepted through review.
+Each factual field must be `null`, `unknown`, or linked to a short supporting span from the source. Model output remains a proposal until verified through the deterministic policy or human exception path.
 
 ### 8.7 Pattern comparison contract
 
@@ -751,7 +801,7 @@ Candidate retrieval happens before the LLM. Compare at most a configured top `K`
 }
 ```
 
-The model may recommend a match but may not merge clusters. V0.1 keeps all merge/split decisions human-reviewable.
+The model may recommend a match but may not merge clusters. V0.1 routes all merge/split decisions to human review.
 
 The comparison `input_hash` must cover the source-item-version content hash, model/prompt/schema versions, taxonomy hash, and the sorted candidate `pattern_revision_id + content_hash` values. A changed candidate revision invalidates an old comparison result even when the source article did not change.
 
@@ -760,7 +810,7 @@ The comparison `input_hash` must cover the source-item-version content hash, mod
 - Validate every response against a versioned JSON Schema.
 - Retry malformed structured output once.
 - Retry transient `429`, timeout, and `5xx` responses within the global call cap and respecting `Retry-After`.
-- On quota exhaustion, stop new AI calls, leave items `pending_ai`, and continue serving the last approved public state.
+- On quota exhaustion, stop new AI calls, leave items `pending_ai`, and continue serving the last published public state. Missing confidence may only downgrade an otherwise safe candidate to review.
 - Never switch automatically to a paid model or another provider.
 - Treat all source text as untrusted data. Delimit it from instructions and ignore commands found inside pages.
 
@@ -851,7 +901,7 @@ id
 slug
 lifecycle_status          # candidate / evidence_pending / review_ready / rejected / archived
 current_draft_revision_id
-latest_approved_revision_id
+latest_approved_revision_id # compatibility pointer; verification provenance is authoritative
 first_seen_at
 last_seen_at
 row_version
@@ -863,7 +913,7 @@ This is the stable identity and internal lifecycle row. It is not the public con
 
 #### `pattern_revisions`
 
-Each reviewable/public snapshot is a numbered revision. Draft revisions may be edited; an approved revision is immutable by trigger and can only be superseded by a new revision.
+Each candidate/public snapshot is a numbered revision. Draft revisions may be edited; a verified revision is immutable by trigger and can only be superseded by a new revision.
 
 ```text
 id
@@ -898,13 +948,17 @@ evidence_set_hash
 content_hash
 created_by
 created_at
-approved_by
-approved_at
+verified_at
+verification_path         # policy / human
+verification_policy_decision_id
+verification_review_event_id
+approved_by               # compatibility human actor; null for future live policy path
+approved_at               # compatibility human decision time
 ```
 
-Approval must pin the exact public fields, legal wording, and evidence set. `approved_by` must equal the current authenticated `auth.uid()` and that user must be an enabled `admin_user`; a service/worker request with no reviewer identity cannot satisfy the approval trigger.
+Verification must pin the exact public fields, legal wording, and evidence set. The human path requires `approved_by = auth.uid()` plus an enabled `admin_user`. The policy path requires a matching eligible append-only policy decision and an exact activated `policy_version + policy_hash + gate_version`; it never fabricates `approved_by`. V0.1's activation allowlist is empty and uses human confirmation.
 
-`content_hash` is calculated from canonical serialization of the public fields, revision aliases, evidence set, and claim-support mappings. The approved-revision trigger rejects `UPDATE` and `DELETE`; correction always creates a new revision.
+`content_hash` is calculated from canonical serialization of the public fields, revision aliases, evidence set, and claim-support mappings. The verified-revision trigger rejects `UPDATE` and `DELETE`; correction always creates a new revision.
 
 #### `scam_aliases`
 
@@ -939,6 +993,8 @@ new_target
 new_script
 is_material_update
 acceptance_status          # proposed / accepted / rejected
+acceptance_path            # policy / human
+acceptance_policy_decision_id
 accepted_by
 accepted_at
 last_verified_at
@@ -972,6 +1028,10 @@ evidence_claim_support
 
 The Publish Gate verifies that every required non-null public value has at least one accepted mapping. Foreign keys, not UUID arrays, enforce integrity.
 
+#### `policy_decisions`
+
+Append-only rows record `rules_outcome`, effective `decision_outcome`, `shadow/live` mode, policy/config/input/content/evidence/candidate hashes, reason codes, Evidence Gate provenance, and whether model uncertainty caused a one-way downgrade. A policy decision is not a human review event, and a shadow-safe decision is not publication authority.
+
 #### `review_items`
 
 ```text
@@ -996,20 +1056,22 @@ updated_at
 resolved_at
 ```
 
-A partial unique index on open `dedupe_key` prevents the same rerun from generating repeated tasks.
+A partial unique index on open `dedupe_key` prevents the same rerun from generating repeated exception tasks.
 
 ### 9.3 Supporting entities
 
 - `pipeline_runs`: GitHub run ID/attempt, trigger, commit SHA, registry hash, versions, counters, timing, outcome, and redacted error summary.
 - `source_states`: one mutable row per source containing cursor, ETag, `Last-Modified`, last attempt/success, consecutive failures, and last error. Registry sync must never overwrite this operational state.
 - `source_run_results`: one row per source/run with duration, counts, retry/error category, and outcome; a successful source result is not lost because another source failed.
-- `review_events`: append-only actor/action/before/after/reason/timestamp audit. Clients cannot update or delete it.
+- `review_events`: append-only human actor/action/before/after/reason/timestamp audit. It remains distinct from `policy_decisions`; clients cannot update or delete either.
 - `heat_snapshots`: pattern, score version, `as_of`, score, breakdown, input hash, and calculation time.
 - `admin_users`: Supabase Auth user ID, role, enabled state. Authentication alone does not confer reviewer access.
-- `public_releases`: monotonically increasing release number, state (`approved`, `deploying`, `deployed_unrecorded`, `deployed`, `deploy_failed`, `superseded`), manifest hash, artifact hash, commit/deployment IDs, timestamps, and redacted error.
-- `public_release_items`: immutable manifest mapping `(release_id, pattern_id)` to one `pattern_revision_id` and one `heat_snapshot_id`. An unpublish release omits the pattern.
+- `publication_changes`: explicit publish/unpublish request plus `request_path` and optional `policy_decision_id`.
+- `public_releases`: monotonically increasing release number, state (`approved`, `deploying`, `deployed_unrecorded`, `deployed`, `deploy_failed`, `superseded`), manifest hash, artifact hash, commit/deployment IDs, `published_at`, timestamps, and redacted error.
+- `public_release_items`: immutable manifest mapping `(release_id, pattern_id)` to one `pattern_revision_id`, one `heat_snapshot_id`, and the conservative `last_verified_at` snapshot. An unpublish release omits the pattern.
+- `public_release_evidence_items`: immutable per-release evidence freshness snapshots, so re-exporting an old `release_id` cannot change when evidence is rechecked later.
 
-`prepare_public_release()` must copy the prior deployed manifest and apply only explicitly approved revisions/unpublishes. A production deployment accepts one exact `release_id`; it never queries “whatever is currently approved” during the build.
+`prepare_public_release()` must copy the prior deployed manifest and apply only authorized verified revisions/unpublishes. A production deployment accepts one exact `release_id`; it never queries “whatever is currently verified” during the build.
 
 ### 9.4 Public data boundary
 
@@ -1020,15 +1082,16 @@ work/release/<release_id>/public-release.json
 work/release/<release_id>/search-index.json
 ```
 
-Next.js reads those files without database credentials and emits home, detail pages, and the same release’s client-side search index. Public browsers do not query Supabase. This prevents a newly approved record from appearing in search before its detail page exists and avoids sending user-entered search text to a third party.
+Next.js reads those files without database credentials and emits home, detail pages, and the same release’s client-side search index. Public release schema v2 exposes conservative pattern/evidence `last_verified_at` and release `published_at` separately. Public browsers do not query Supabase. This prevents a newly verified record from appearing in search before its detail page exists and avoids sending user-entered search text to a third party.
 
-The anonymous database role receives no table or function access. The Supabase publishable key exists in the static application only for the separately loaded admin authentication flow. Anonymous users cannot read `clean_text`, source records, AI results, queue items, reviewer notes, run errors, audit events, or approved-pending revisions.
+The anonymous database role receives no table or function access. The Supabase publishable key exists in the static application only for the separately loaded admin authentication flow. Anonymous users cannot read `clean_text`, source records, AI results, queue items, reviewer notes, run errors, decision/audit events, or verified-pending revisions.
 
-The reviewer UI uses Supabase Auth and narrow RPCs such as:
+The system uses narrow provenance-specific RPCs such as:
 
 ```text
-approve_new_pattern(...)
-approve_pattern_update(...)
+record_policy_decision(...)
+apply_live_policy_publication(...)   # activation-gated off in V0.1
+confirm_policy_publication(...)
 merge_pattern_candidate(...)
 reject_review_item(...)
 hold_for_evidence(...)
@@ -1036,7 +1099,7 @@ archive_pattern(...)
 unpublish_pattern(...)
 ```
 
-Each approval RPC must accept proposed evidence, run the Publish Gate, freeze one immutable `pattern_revision`, verify `row_version`, and append a `review_event` in one transaction.
+`confirm_policy_publication(...)` is the only human publication/approval entry point and requires a matching non-blocked Policy Decision before touching evidence. The former direct `approve_new_pattern(...)` and `approve_pattern_update(...)` entry points are explicitly revoked for every API role so a reviewer cannot bypass Policy Engine routing. Each verification RPC must accept proposed evidence, run the same Publish Gate, freeze one immutable `pattern_revision`, verify hashes/`row_version`, and append the appropriate policy or human provenance in one transaction.
 
 RLS and grants are mandatory on every exposed object:
 
@@ -1069,7 +1132,7 @@ Public wording must match the evidence:
 - regulator warning: `监管部门已提示风险`;
 - do not turn a warning, investigation, enforcement action, charge, or regulator risk notice into a judgment or a broader claim of guilt.
 
-Evidence strength and legal status are separate fields. An A-level source makes the record authoritative enough for review; it does not permit wording beyond the exact status supported by that source.
+Evidence strength and legal status are separate fields. An A-level source makes the record eligible for policy evaluation; it does not permit wording beyond the exact status supported by that source.
 
 ### 10.2 Level B — Corroborated
 
@@ -1109,9 +1172,9 @@ Examples:
 
 Retain a minimal internal record and reason so the system does not repeatedly investigate the same item.
 
-### 10.5 Review Eligibility Gate
+### 10.5 Evidence Eligibility Gate
 
-A candidate may become `review_ready` before human review when all are true:
+A candidate may become `eligible_for_policy` when all are true:
 
 1. Proposed evidence mechanically supports a provisional A or B outcome.
 2. The cluster describes one coherent deceptive mechanism; shared keywords alone are insufficient.
@@ -1126,7 +1189,7 @@ A candidate may become `review_ready` before human review when all are true:
 Machine-readable outcomes:
 
 ```text
-eligible_for_review
+eligible_for_policy
 needs_more_evidence
 blocked
 duplicate
@@ -1147,22 +1210,43 @@ unsafe_detail
 needs_merge_or_split
 ```
 
-Gemini confidence, source count, embedding similarity, and Heat never substitute for these requirements.
+Gemini confidence, source count, embedding similarity, and Heat never substitute for these requirements. Model confidence is not a positive eligibility input.
 
 ### 10.6 Publish Gate
 
-The approval RPC performs the second gate inside one transaction:
+The policy and human verification RPCs perform the same second gate inside one transaction:
 
-1. the reviewer explicitly accepts/rejects proposed evidence and confirms independence/family grouping;
+1. evidence acceptance has valid policy or human provenance, with independence/family grouping still satisfied;
 2. the resulting accepted evidence still produces A or B;
 3. every required non-null public value has an `evidence_claim_support` mapping to accepted evidence and a bounded source span;
 4. `risk_type`, `legal_status`, and every public label are compatible;
-5. all Heat input enums are evidence-supported and reviewer-accepted;
-6. the candidate’s `row_version` and content hash still match the reviewed screen;
-7. the exact snapshot is frozen as an immutable approved `pattern_revision` with reviewer and timestamp;
-8. an append-only `review_event` records the decision.
+5. all Heat input enums are evidence-supported and verified;
+6. the candidate’s `row_version`, content hash, evidence hash, and policy/input hashes still match;
+7. the exact snapshot is frozen as an immutable verified `pattern_revision` with `verified_at` and a policy or human verification path;
+8. an append-only `policy_decision` or human `review_event` records distinct provenance.
 
-Failure leaves the candidate unapproved and returns a specific reason. No deployable revision exists until this transaction succeeds.
+Failure leaves the candidate unverified and returns a specific reason. No deployable revision exists until this transaction succeeds. In V0.1, a shadow decision cannot invoke the live policy transaction and must use authenticated human confirmation.
+
+### 10.7 Deterministic Policy Engine
+
+`config/publication-policy-v0.1.yaml` is versioned behavior and part of the eval behavior hash. The engine records:
+
+```text
+policy_version
+policy_hash
+candidate_hash
+input_hash
+rules_outcome          # safe_to_automate / review_required / blocked
+decision_outcome       # may only be equally or more conservative
+reason_codes[]
+mode                    # shadow / live
+model_confidence_downgrade
+publication_authorized
+```
+
+The V0.1 safe class is limited to an existing public pattern's Evidence-A routine update with no material/public-copy change, complete verified claim support, and no named-entity risk, legal/evidence status change, source regression, merge, or split. First publication and Evidence B require review.
+
+Only after that deterministic safe result may low or missing relevance/pattern-match confidence downgrade the effective outcome to `review_required`. Confidence is never evaluated as a reason to upgrade. Unknown policy version, missing input, hash mismatch, or unprovable condition fails closed.
 
 ---
 
@@ -1180,7 +1264,7 @@ Scam Heat is a 0–100 **attention-priority score**. It is not:
 
 Only an Evidence A/B pattern may appear in public Heat ordering. Code computes the final score from versioned feature buckets; the LLM never returns the final number.
 
-Before review, the worker may display `provisional_heat` from extracted feature proposals. Only reviewer-accepted, evidence-supported features may update public `heat_score`; later freshness decay is automatic because it does not alter the underlying factual features.
+Before verification, the worker may display `provisional_heat` from extracted feature proposals. Only verified, evidence-supported features may update public `heat_score`; later freshness decay is automatic because it does not alter the underlying factual features.
 
 Heat alone does not qualify an old record for current attention. Define:
 
@@ -1259,20 +1343,20 @@ Count independent evidence origins, not URLs.
 | Longstanding unchanged common scam | 2 |
 | Unknown | 0 |
 
-The model may suggest a novelty bucket; code applies points only from a validated feature enum, and the reviewer can override the feature before publication.
+The model may suggest a novelty bucket; code applies points only from a validated feature enum, and a human exception decision can override the feature before publication.
 
-For every component, store a reviewer-approved feature enum. If more than one row appears applicable, choose the first matching row from top to bottom and store the evidence IDs that justify it.
+For every component, store a verified feature enum. If more than one row appears applicable, choose the first matching row from top to bottom and store the evidence IDs that justify it.
 
 ### 11.7 Display bands
 
 | Heat | Internal/public label | Behavior |
 |---|---|---|
-| 80–100 | 🔴 值得立即关注 | Eligible for `Today Queue`; still requires human approval |
-| 65–79 | 🟠 近期值得关注 | High Review Queue priority |
+| 80–100 | 🔴 值得立即关注 | Eligible for `Today Queue`; Heat grants no publication authority |
+| 65–79 | 🟠 近期值得关注 | High exception-queue priority when review is required |
 | 50–64 | 🟡 持续观察 | Database update; not prominent by default |
 | <50 | ⚪ 数据库记录 | Retain; no active distribution |
 
-The homepage shows at most three approved items in “今天值得注意”. If none qualifies, omit the section.
+The homepage shows at most three published items in “今天值得注意”. If none qualifies, omit the section.
 
 ### 11.8 Auditability
 
@@ -1293,7 +1377,7 @@ Same inputs and `as_of` date must always yield the same score. Recalculate when 
 
 ---
 
-## 12. Review Queue and admin
+## 12. Policy routing, exception Review Queue, and admin
 
 ### 12.1 Admin surfaces
 
@@ -1304,7 +1388,7 @@ V0.1 admin has only:
 - `Sources`;
 - `Raw Items`.
 
-It is not a general CMS. The reviewer verifies machine judgments rather than writing a parallel article system.
+It is not a general CMS. Policy routing happens before this surface; the human verifies exceptions and V0.1 shadow confirmations rather than writing a parallel article system.
 
 Use Supabase email magic-link authentication and an explicit `admin_users` allowlist. Do not build password management, public registration, or role administration UI in V0.1.
 
@@ -1322,6 +1406,7 @@ One screen must show:
 - duplicate/syndication grouping;
 - material changes;
 - model comparison result, confidence, and reason codes;
+- Policy Engine outcome, version/hash, reason codes, shadow/live state, and whether low/unknown model confidence caused a downgrade;
 - extraction uncertainties and contradictory facts;
 - PII, attribution, and legal-risk flags;
 - public-page preview;
@@ -1345,19 +1430,24 @@ Also support:
 - urgent unpublish;
 - correct and republish.
 
-New Pattern first publication, evidence-level change, merge/split, negative claim involving a named organization, and any item entering the homepage always require explicit approval.
+In V0.1, first publication, Evidence B, material/public-copy change, evidence-level or legal-status change, merge/split, source regression, negative claim involving a named organization, and any item entering the homepage route to explicit human decision. Model confidence may add review; it can never remove one of these reasons.
 
 ### 12.4 Queue state
 
 ```text
 candidate
   ├── insufficient evidence → needs_evidence
-  └── gate passes → ready_for_review
-                         ├── create / update / merge → immutable approved pattern_revision
-                         └── reject → rejected
+  └── gate passes → Policy Engine
+                     ├── blocked → no publication
+                     ├── review_required → exception Review Queue
+                     │                      ├── create / update / merge → immutable verified pattern_revision
+                     │                      └── reject → rejected
+                     └── safe_to_automate
+                            ├── V0.1 shadow → human confirmation
+                            └── future activated class → policy verification
 
-approved pattern_revision
-  → included in approved public_release
+verified pattern_revision
+  → included in exact public_release
   → deploying
   → deployed_unrecorded → deployed
   └── deploy_failed
@@ -1365,7 +1455,7 @@ approved pattern_revision
 later revision / removal release → prior release superseded
 ```
 
-All decisions record actor, timestamp, reason, source snapshot, and before/after content. Approval applies to one immutable revision; a later material change requires another revision and review. A database status change never claims that a static page has been removed before the corresponding release deploy completes.
+All decisions record their correct provenance, timestamp, reason, source snapshot, and before/after content. Human events record an actor; policy decisions record policy/input hashes and never fake one. Verification applies to one immutable revision; a later material change requires another revision and policy routing. A database status change never claims that a static page has been removed before the corresponding release deploy completes.
 
 ### 12.5 Queue ordering
 
@@ -1385,7 +1475,7 @@ The desired daily funnel after initial backlog is approximately:
 25–40 relevant
 5–10 candidate patterns
 2–5 material changes
-2–5 review items
+2–5 exception or shadow-confirmation items
 ```
 
 These are product targets, not fabricated activity quotas.
@@ -1409,8 +1499,8 @@ First screen:
 
 Then:
 
-1. **今天值得注意** — maximum 3 approved patterns; hide if empty.
-2. **最近出现变化** — 5–10 recently reviewed material changes.
+1. **今天值得注意** — maximum 3 published patterns; hide if empty.
+2. **最近出现变化** — 5–10 recently verified material changes.
 3. **常见骗局** — simple category entry points: 电话、微信、投资理财、养老、保健品、冒充亲友、客服、收藏品.
 
 Pattern card content:
@@ -1428,7 +1518,7 @@ The top of the page must answer “what, danger, action” before showing a time
 
 Required reading order:
 
-1. status: Heat band, evidence label, last reviewed date;
+1. status: Heat band, evidence label, conservative “信息核实至” date;
 2. canonical name and aliases;
 3. one-sentence explanation;
 4. `现在先做什么` — immediate protective actions;
@@ -1439,7 +1529,7 @@ Required reading order:
 9. known cases and material-change timeline;
 10. evidence sources with institution, date, original title, and original link;
 11. clear separation between source facts and Scam Radar synthesis;
-12. last human review and correction/unpublish status.
+12. `Last Verified / 信息核实至`, separate release-published date, and correction/unpublish status. Public last-verified is the oldest supporting-evidence check, never the policy/human verification time.
 
 Do not publish a complete operational playbook that would materially help scammers. Mask personal phone numbers, bank accounts, IDs, wallet addresses, access codes, and suspicious URLs.
 
@@ -1487,7 +1577,7 @@ Requirements:
 - status must not depend on color alone;
 - semantic headings and basic WCAG AA contrast;
 - no flashing alarm, panic copy, autoplay, infinite scroll, or “震惊 / 曝光” headlines;
-- exact evidence and review dates, not a false “live” impression;
+- exact evidence-verification and release-publication dates, not a false “live” impression;
 - stable slugs and useful sharing metadata;
 - no ads, affiliate links, engagement bait, or notification prompts.
 
@@ -1590,7 +1680,7 @@ CLOUDFLARE_PAGES_PROJECT=scam-radar
 SUPABASE_PROJECT_REF
 ```
 
-Production model, prompt, taxonomy, schema, and scoring selection comes from reviewed repository files. CI derives their combined behavior hash and requires a matching approved eval manifest; no GitHub variable can select another production behavior. The scoring version is derived from `scoring-v0.1.yaml` content, not supplied as an arbitrary label. Environment quota caps may lower checked-in hard maxima but may not raise them. Caps are safety defaults, not entitlement assumptions.
+Production model, prompt, taxonomy, schema, scoring, and publication-policy selection comes from reviewed repository files. CI derives their combined behavior hash and requires a matching approved eval manifest; no GitHub variable can select another production behavior. Scoring and policy versions are derived from checked-in content, not arbitrary environment labels. V0.1 policy config must remain shadow with live automatic authorization false, and the database live-policy allowlist must remain empty. A later activation migration must bind the exact reviewed policy and Evidence Gate hashes. Environment quota caps may lower checked-in hard maxima but may not raise them. Caps are safety defaults, not entitlement assumptions.
 
 ### 15.3 Static web variables
 
@@ -1604,7 +1694,7 @@ NEXT_PUBLIC_RELEASE_ID               # injected by deploy workflow
 
 Anything beginning with `NEXT_PUBLIC_` is public. The Supabase values are used only by the client-side admin Auth/review chunks; public content and search do not query Supabase. These variables must never contain a Supabase secret/service key, Gemini key, database password, or Cloudflare token.
 
-A dedicated trusted exporter step may use `SUPABASE_SECRET_KEY` to fetch one approved `release_id` into `work/release/<release_id>/`. It must then remove the secret from the environment before launching Next.js. The Next build process reads only those JSON artifacts and must never receive the secret. CI scans the exported bundle for a sentinel secret.
+A dedicated trusted exporter step may use `SUPABASE_SECRET_KEY` to fetch one exact published `release_id` into `work/release/<release_id>/`. It must then remove the secret from the environment before launching Next.js. The Next build process reads only those JSON artifacts and must never receive the secret. CI scans the exported bundle for a sentinel secret.
 
 ### 15.4 Key handling
 
@@ -1637,7 +1727,8 @@ Required jobs:
 10. secret sentinel scan of `web/out`;
 11. repository secret scan and a check that third-party GitHub Actions are pinned to full commit SHAs;
 12. current behavior-hash ↔ approved live-eval-manifest check;
-13. concise test/eval summary upload.
+13. policy monotonicity, shadow-authority denial, and public freshness timestamp contract checks;
+14. concise test/eval summary upload.
 
 CI dependency installation may use approved registries, but application tests run with outbound network denied except localhost and must not call production Supabase, real source sites, Gemini, Cloudflare, or telemetry. All HTTP transports must be injectable. Production secrets are injected only into the single trusted step that needs each one, not at workflow scope.
 
@@ -1672,11 +1763,11 @@ Requirements:
 - each source isolated so one parser failure does not discard successful sources;
 - hard item and Gemini-call caps;
 - `workflow_dispatch` supports source selection and dry-run mode;
-- structured summary with funnel counts, failures, backlog, versions, and quota state;
+- structured summary with funnel counts, policy outcomes/reasons, shadow-auto candidates, failures, exception backlog, versions, and quota state;
 - no full page body in logs or artifacts;
-- if approved revisions/unpublishes or deterministic Heat-decay changes require a new public release, prepare one immutable `release_id` and invoke the reusable deploy workflow.
+- if authorized verified revisions/unpublishes or deterministic Heat-decay changes require a new public release, prepare one immutable `release_id` and invoke the reusable deploy workflow.
 
-The release check is a separate job and still runs when collection or AI is paused, so an approved correction/unpublish cannot be stranded by a crawler kill switch.
+The release check is a separate job and still runs when collection or AI is paused, so an authorized correction/unpublish cannot be stranded by a crawler kill switch.
 
 Scheduled execution is best-effort, not a real-time SLA. Manual dispatch is the recovery path.
 
@@ -1687,22 +1778,22 @@ Use **Cloudflare Pages Direct Upload** from GitHub Actions. Do not also enable C
 Triggers:
 
 - `workflow_call` from a deploy job at the end of successful `ci.yml` on `push` to `main` after launch;
-- `workflow_call` when a newly approved content `release_id` exists;
+- `workflow_call` when a newly prepared authorized content `release_id` exists;
 - manual dispatch for urgent publish/unpublish.
 
-Before first launch, `SCAM_RADAR_DEPLOY_ENABLED=false` makes every automatic caller exit without deployment. After launch, a human push/merge to `main` authorizes a code release; an authenticated reviewer’s approval authorizes inclusion of that exact content revision. Codex still never pushes or deploys on its own.
+Before first launch, `SCAM_RADAR_DEPLOY_ENABLED=false` makes every automatic caller exit without deployment. After launch, a human push/merge to `main` authorizes a code release; a valid policy or human verification path authorizes inclusion of that exact content revision. V0.1 shadow-safe candidates still require authenticated human confirmation. Codex still never pushes or deploys on its own.
 
 Steps:
 
-1. verify deploy is enabled, target commit passed CI, database schema/behavior contract matches, and `release_id` is approved;
+1. verify deploy is enabled, target commit passed CI, database schema/behavior/policy contract matches, and `release_id` contains only authorized verified revisions;
 2. acquire the one production deployment concurrency/DB lease, reconcile the live `release.json` with database state, and reject an older release from overwriting a newer deployed release;
 3. use a secret-bearing exporter step to write the immutable release and search JSON, record their hashes, then remove the database secret from the environment;
 4. build Next.js static export from those files and embed `release_id` plus artifact hash;
 5. scan export for backend secret sentinel;
 6. upload the artifact as a Cloudflare preview deployment and smoke-test home, one detail page, search index, missing page, and embedded release ID;
 7. re-check that the release remains deployable, then upload the exact same artifact as production;
-8. verify `release.json`, home, detail, local search index, and canonical domain all expose the same release ID;
-9. record the Cloudflare deployment ID and mark the release `deployed` through RPC;
+8. verify `release.json`, home, detail, local search index, and canonical domain all expose the same release ID and correct v2 `last_verified_at`/`published_at` semantics;
+9. verify the artifact's pre-frozen `published_at` is unchanged, record the Cloudflare deployment ID and `deployed_at`, and mark the release `deployed` through RPC;
 10. if the final database write fails, leave the already public static artifact untouched, report `deployed_unrecorded`, and run reconciliation that reads production `release.json` and retries the idempotent mark;
 11. if production smoke fails, redeploy the last known-good artifact and record both deployment IDs;
 12. write commit SHA, release ID, artifact hash, deployment IDs, reconciliation state, and result to the Actions summary.
@@ -1745,7 +1836,7 @@ Production migrations are manual and protected by an explicit confirmation step.
 - Retry timeout, `408`, `429`, and `5xx` up to three times with exponential backoff and jitter.
 - Respect `Retry-After`.
 - Do not retry ordinary `4xx` except an explicitly understood transient case.
-- Three consecutive source failures create a `source_health` review item and visibly degrade the run; do not silently disable or bypass the source.
+- Three consecutive source failures create a `source_health` exception item and visibly degrade the run; do not silently disable or bypass the source.
 - Commit a cursor only after source success so a partial failure cannot skip items.
 - Recheck accepted evidence on a bounded schedule: default every seven days, and within 24 hours when it is the sole evidence family behind an active Heat ≥65 record. Conditional requests avoid unnecessary downloads.
 - A new content hash creates a new source-item version. Explicit correction/withdrawal, contradictory change, or persistent unavailability creates `gate_regression`; it never edits the accepted evidence in place.
@@ -1767,7 +1858,7 @@ Each run records:
 - AI pending / success / invalid / error;
 - candidate pattern / linked pattern / ambiguous match;
 - gate outcomes and reason-code counts;
-- Review Queue items created/updated;
+- policy outcomes/reasons, shadow-auto counts, and exception/shadow-confirmation items created/updated;
 - Heat recomputations;
 - per-source duration, retry count, and health;
 - model, prompt, schema, registry, score, and commit versions;
@@ -1792,9 +1883,9 @@ Without code changes:
 - `SCAM_RADAR_DEPLOY_ENABLED=false` blocks all production Pages uploads before launch or during an incident;
 - GitHub scheduled workflow can be disabled in an emergency.
 
-Old approved pages remain available while new processing is paused.
+Old published pages remain available while new processing is paused.
 
-Human approval is not a feature flag. Database triggers/RPC checks make reviewer identity and an immutable approved revision mandatory; the worker cannot create an approved revision, and deploy rejects a release that does not contain only such revisions.
+Verification authority is not granted by a feature flag or model output. Database triggers/RPC checks require either enabled-human exception provenance or a matching eligible live policy decision whose exact policy version/hash and Evidence Gate version appear in the database activation allowlist. V0.1's allowlist is empty, so the worker cannot convert shadow outcomes into verified revisions. Deploy rejects releases containing anything outside these paths.
 
 ### 17.6 Mainland access
 
@@ -1813,6 +1904,7 @@ Cover:
 - content/identity/origin hashes;
 - dedup and rerun idempotency;
 - all Evidence Gate branches and reason codes;
+- Policy Engine safe/review/blocked branches, stable hashes, fail-closed unknowns, shadow authority denial, and the invariant that confidence can only downgrade;
 - syndication-origin versus underlying evidence-family independence;
 - the `risk_type × legal_status × evidence_level` public-copy matrix;
 - every Scam Heat bucket, boundary, cap, unknown case, and final total;
@@ -1840,13 +1932,14 @@ Every collector must prove with fixed fixtures:
 - Authenticated non-reviewer has no review capability.
 - Enabled reviewer can call only intended RPCs.
 - Secret/service role never appears in web code or bundle.
-- `review_events` is append-only.
+- `policy_decisions` and `review_events` are separately append-only and automation never populates a human actor.
 - Concurrent duplicate insert attempts remain one logical item.
-- Approval transaction fails if Evidence Gate or `row_version` changed.
-- An approved revision cannot be updated/deleted; an edit creates a new draft revision.
-- A service/worker request with no reviewer `auth.uid()` cannot approve a revision.
-- Approved-but-not-released and rejected records cannot enter the static exporter.
-- Release manifests pin exact pattern revisions and Heat snapshots.
+- Verification transaction fails if Evidence Gate, policy/input/content/evidence hash, or `row_version` changed.
+- A verified revision cannot be updated/deleted; an edit creates a new draft revision.
+- A generic service/worker request cannot impersonate a reviewer; a shadow policy decision cannot satisfy live verification.
+- Verified-but-not-released and rejected records cannot enter the static exporter.
+- Release manifests pin exact pattern revisions, Heat snapshots, conservative pattern `last_verified_at`, and per-evidence verification timestamps.
+- Evidence `last_verified_at`, revision `verified_at`, and release `published_at` remain semantically and structurally distinct.
 
 ### 18.4 Web tests
 
@@ -1854,8 +1947,8 @@ Every collector must prove with fixed fixtures:
 - Heat breakdown and evidence wording.
 - Keyboard navigation, focus, semantic headings, touch target, and contrast checks.
 - Playwright core public flow: home → search → detail → evidence source.
-- Playwright admin flow: login fixture → review → approve/reject → audit state.
-- Static export contains every approved fixture slug and stable metadata.
+- Playwright admin flow: Policy Engine route → exception review → approve/reject → distinct audit state.
+- Static export contains every published fixture slug and stable metadata.
 - Home, detail, and search index expose one identical `release_id`; search performs no network request.
 - `risk_alert` fixtures never render confirmed-scam or adjudication wording.
 - Bundle secret sentinel scan.
@@ -1874,8 +1967,9 @@ fixture source
 → recorded Gemini relevance/extraction/comparison
 → Evidence Gate
 → Scam Heat
-→ Review Queue
-→ fixture approval
+→ deterministic Policy Engine
+→ shadow-safe / exception route
+→ fixture human confirmation
 → immutable static release export
 → static detail page
 ```
@@ -1896,6 +1990,8 @@ Build the first 50–100 historical public reports before prompt tuning. Before 
 - structured fields with supported source spans;
 - expected Heat components and expected score band;
 - expected gate reason codes;
+- expected Policy Engine rules/effective outcomes and reason codes;
+- low/unknown confidence downgrade cases and matched high-confidence cases that must not upgrade;
 - forbidden public claims.
 
 Minimum launch denominators:
@@ -1903,7 +1999,7 @@ Minimum launch denominators:
 - ≥100 relevance/evidence records, including at least 20 A, 20 B, 20 C/D, and 25 legitimate/unrelated negative controls;
 - ≥40 balanced `Same Pattern / Different Pattern` pairs;
 - ≥30 material-change / routine-update pairs;
-- ≥10 temporal Review Queue scenarios;
+- ≥10 temporal exception-queue and shadow-routing scenarios;
 - ≥5 examples each of prompt injection, correction/retraction, common-origin syndication, and legitimate lookalikes. Categories may overlap.
 
 Use a stratified 70/30 development/locked-holdout split. At least 20% of records receive a second human review, and every holdout public-eligibility label is adjudicated. A holdout label changes only for a documented labeling error.
@@ -1936,7 +2032,10 @@ These are launch gates and may change only through a versioned eval-policy chang
 - material-change F1 ≥85%;
 - Heat calculation is 100% deterministic for fixed features;
 - ≥90% of labeled cases fall in the expected Heat band;
-- temporal simulation puts ≥90% of human-selected “must review” items in the system’s top Review Queue group;
+- temporal simulation puts ≥90% of human-selected “must review” items in the system’s top exception-queue group;
+- 100% monotonic authority: changing model confidence alone never upgrades a policy outcome;
+- 100% of shadow `safe_to_automate` decisions have `publication_authorized=false`;
+- measured shadow false-auto rate and review-required capture rate are reported with denominators; no live-auto threshold exists until a separate activation decision;
 - zero severe unsupported accusations in the holdout set.
 
 False-publication precision is more important than maximal coverage. Missing a weak signal is cheaper than falsely calling a legitimate party fraudulent.
@@ -1945,7 +2044,7 @@ False-publication precision is more important than maximal coverage. Missing a w
 
 - Normal CI uses recorded model responses so it is deterministic and free.
 - A prompt, schema, or model change requires manual live eval on the trusted branch.
-- Store the combined behavior hash, prompt/schema/taxonomy/scoring hashes, model ID, timestamp, denominators, metrics, and failure-case IDs in an approved eval manifest.
+- Store the combined behavior hash, prompt/schema/taxonomy/scoring/policy hashes, model ID, timestamp, denominators, metrics, and failure-case IDs in an approved eval manifest.
 - CI and deploy recompute the current behavior hash and fail when no matching approved eval manifest exists.
 - A critical metric regression or >2 percentage-point unexplained drop blocks release.
 - Add every meaningful false positive, false merge, or missed high-priority item as a regression case.
@@ -1958,8 +2057,8 @@ False-publication precision is more important than maximal coverage. Missing a w
 |---|---|---|
 | **M0 — Rules & scaffold** | Root `AGENTS.md`, repo structure, architecture/data-flow docs, dependency decisions, schemas, env template, Makefile, minimal offline CI | Rules precede business code; fixture commands run |
 | **M1 — Deterministic ingestion** | Supabase schema/RLS, Source Registry, five fixture/seed collectors, stable item/version storage, run tracking, dedup | System can reliably “start reading”; identical rerun creates no duplicate |
-| **M2 — Scam Intelligence** | Gold/eval harness, relevance, structured extraction, matching, Evidence Gate, Scam Heat | System can explain what deserves review and why; this is the critical milestone |
-| **M3 — Human review** | Auth, Review Queue, immutable pattern revisions, claim/evidence mapping, approval/merge/reject/unpublish, audit | No deployable revision can exist without an authenticated reviewed snapshot |
+| **M2 — Scam Intelligence & Policy** | Gold/eval harness, relevance, structured extraction, matching, Evidence Gate, Scam Heat, deterministic Policy Engine and shadow routing | System can explain what is safe, what needs review, and why; model confidence cannot increase authority |
+| **M3 — Human exception path** | Auth, exception Review Queue, immutable verified revisions, claim/evidence mapping, confirm/merge/reject/unpublish, distinct audit | No deployable revision can exist outside a valid policy or human path; V0.1 shadow still requires authenticated confirmation |
 | **M4 — Public Database** | Home, detail, local static search, immutable release export, preview/production Pages workflow | One release produces consistent, searchable, traceable public output |
 | **M5 — Real-world validation & launch** | 15–25 live sources, three daily runs, failure/quota/takedown runbooks, shadow review, domain | Live Definition of Done passes and Rui approves launch |
 
@@ -1981,15 +2080,16 @@ V0.1 is complete only when all conditions below are true.
 - Existing patterns and genuinely new patterns are usually distinguished correctly against the Gold Set gates.
 - Every public factual field is traceable to accepted evidence.
 - Evidence level and Heat are stored, calculated, displayed, and tested independently.
-- A reviewer can override, merge, reject, correct, archive, and unpublish every AI proposal.
-- The daily Review Queue is short enough to inspect in 2–5 minutes after initial backlog.
+- A human can override, merge, reject, correct, archive, and unpublish every AI proposal or policy decision.
+- The daily exception queue is short enough to inspect in 2–5 minutes after initial backlog.
+- Every candidate has a reproducible policy version/hash, outcome, reasons, mode, and authority result; shadow safe candidates never auto-publish.
 - AI model, prompt, schema, input hash, and processing time are recorded.
 
 ### 21.2 Public experience
 
 - Home, `/scam/[slug]`, and `/search` are complete and mobile usable.
 - Search resolves canonical names, aliases, and common user wording.
-- A user can understand mechanism, warning sign, action, evidence, and review freshness without opening the source article.
+- A user can understand mechanism, warning sign, action, evidence, conservative information freshness, and separate release publication time without opening the source article.
 - No-result search explains that absence does not mean safety and gives immediate safe actions.
 - The UI is calm, large, accessible, and does not sensationalize.
 - The site works independently of 视频号、小红书、抖音, or any distribution platform.
@@ -1999,7 +2099,7 @@ V0.1 is complete only when all conditions below are true.
 - Fresh clone can run `make bootstrap`, `make check`, `make test`, `make eval`, and `make demo` as documented.
 - All initial Gold Set quality gates pass.
 - CI is entirely offline for application behavior.
-- Same collection input can be rerun without duplicate logical records or duplicate review tasks.
+- Same collection input can be rerun without duplicate logical records, policy decisions, or exception tasks.
 - Static build contains no backend secrets.
 - No unresolved P0/P1 defect remains.
 
@@ -2019,13 +2119,13 @@ V0.1 is complete only when all conditions below are true.
 - The reviewed registry contains 15–25 enabled live sources across A1, A2, and B, each with a passing fixture/contract test.
 - During seven consecutive shadow-run days, at least 18 of the expected 21 end-to-end windows succeed, every enabled source succeeds at least once per day, and no fatal collection gap exceeds 24 hours.
 - When provider quota is healthy, the 95th-percentile `pending_ai` item age stays below 24 hours.
-- Human shadow review finds no known Evidence C/D item published and no uninvestigated severe false accusation.
-- After excluding initial backlog, median new review items are ≤5/day, p90 is ≤8/day, and measured median human review time is ≤5 minutes; outliers have an explained source or rule cause.
+- Human shadow comparison finds no known Evidence C/D item published, no uninvestigated severe false accusation, and reports false-auto/review-capture results for every `safe_to_automate` candidate.
+- After excluding initial backlog, median new exception items are ≤5/day, p90 is ≤8/day, and measured median human decision time is ≤5 minutes; outliers have an explained source or rule cause.
 - Cloudflare Pages production deployment succeeds.
 - `https://scamradar.insparian.com` has valid HTTPS, canonical metadata, and a passing read-only smoke test.
 - Mainland checks cover at least three independent network paths, both iOS and Android, and the WeChat in-app browser; ≥90% of ten or more attempts load home, search, and one detail page without a critical failure, with median/p95 timings recorded.
 - Static home, detail, and search all expose the same `release_id`, including after rollback and unpublish tests.
-- Database tests prove a worker/service request cannot create an approved revision; every deployed release contains authenticated reviewer approvals.
+- Database tests prove a generic worker/service request cannot impersonate a reviewer or turn shadow into live authority; every V0.1 deployed release contains authenticated human confirmation even when the stored rules outcome was `safe_to_automate`.
 - Rui explicitly approves the first public release and DNS change.
 
 ---
@@ -2039,8 +2139,8 @@ V0.1 is complete only when all conditions below are true.
 3. Verify the current canonical URL no longer appears in home/search and returns 404/410 after production deploy. Operational target: within 30 minutes of reviewer confirmation.
 4. Record reviewer, reason, timestamps, prior revision, evidence, model/prompt, Heat, removal release, and Cloudflare deployment ID.
 5. If an old Cloudflare preview/deployment URL or CDN copy remains accessible, record that limitation and use the supported Cloudflare removal/purge path only with the required destructive-action approval.
-6. Identify whether source, extraction, evidence-family grouping, gate, Heat, or human review failed.
-7. Add the case to the Gold Set and rerun relevant evals before any corrected revision is approved.
+6. Identify whether source, extraction, evidence-family grouping, gate, Policy Engine, one-way confidence downgrade, Heat, or human exception decision failed. Disable any implicated live policy class first.
+7. Add the case to the Gold Set and rerun relevant evals before any corrected revision is authorized.
 
 The admin must distinguish `takedown_requested`, `removal_deploying`, and `removed_from_current_site`; a database flag alone does not remove an already deployed static page.
 
@@ -2057,18 +2157,19 @@ The admin must distinguish `takedown_requested`, `removal_deploying`, and `remov
 1. Stop new Gemini calls before crossing the configured cap.
 2. Leave items `pending_ai`.
 3. Resume oldest high-trust items next run.
-4. Do not buy, upgrade, or switch provider automatically.
+4. Missing model output may only downgrade an otherwise safe policy candidate to review; it never grants authority.
+5. Do not buy, upgrade, or switch provider automatically.
 
 ### Rollback
 
 - Web: redeploy the last tested artifact/commit; do not force-push.
 - Worker: stop collection, deploy a verified forward fix, then resume.
-- Prompt/model/scoring: select the prior version and rerun eval.
+- Prompt/model/scoring/policy: disable live policy authorization, select the prior version, and rerun eval.
 - Database: prefer forward migration; back up before any irreversible repair.
 
 ### Emergency pause
 
-Turn off collection and/or AI via variables. Existing approved pages remain read-only and available.
+Turn off collection and/or AI via variables. Existing published pages remain read-only and available. Live policy authorization, if separately activated in a later version, must have its own immediate disable path; V0.1 remains shadow-only.
 
 ---
 
@@ -2101,7 +2202,7 @@ Codex should execute in this order.
 
 ### Task 2 — Record architecture and data flow
 
-- Add `docs/architecture.md`, `docs/data-flow.md`, and ADRs for Next.js static export, Supabase RLS, Python worker, Gemini provider boundary, and Pages Direct Upload.
+- Add `docs/architecture.md`, `docs/data-flow.md`, and ADRs for Next.js static export, Supabase RLS, Python worker, Gemini provider boundary, Pages Direct Upload, and deterministic Policy Engine/human exception routing.
 - List proposed dependencies, purpose, maintenance status, and lighter alternatives.
 - Do not activate an application data service. Approved dependency bootstrap may use official package/container registries.
 
@@ -2113,7 +2214,7 @@ Codex should execute in this order.
 
 ### Task 4 — Build the database contract
 
-- Add migrations, checks, indexes, trusted release-export/reviewer RPC skeletons, RLS, audit log, and seeds.
+- Add migrations, checks, indexes, append-only policy/human provenance, trusted release-export and verification RPC skeletons, RLS, audit log, and seeds.
 - Rebuild local Supabase from zero.
 - Prove anon/reviewer/secret-role boundaries with tests.
 - Generate and commit TypeScript database types.
@@ -2145,26 +2246,26 @@ Codex should execute in this order.
 - `pattern-match-v1` structured comparison.
 - Syndication-origin and underlying evidence-family grouping plus all A/B/C/D tests.
 - Exact versioned Heat feature mapping and boundary tests.
-- Generate deduplicated Review Queue candidates.
+- Generate deterministic Policy Engine decisions and deduplicated exception/shadow-confirmation candidates.
 
-### Task 9 — Implement Review Queue
+### Task 9 — Implement Policy routing and human exception queue
 
 - Supabase Auth and `admin_users` authorization.
-- Review list/detail, evidence groups, Heat breakdown, preview, and four primary actions.
-- Transactional approval RPCs, row-version checks, and append-only audit.
-- Prove the worker/service path cannot approve a revision; only an authenticated reviewer can.
+- Policy outcome/reasons, exception list/detail, evidence groups, Heat breakdown, preview, and four primary actions.
+- Transactional policy/human verification RPCs, row/hash-version checks, and distinct append-only provenance.
+- Prove model confidence cannot upgrade, shadow cannot authorize, a generic worker cannot impersonate a reviewer, and V0.1 still requires authenticated confirmation.
 
 ### Task 10 — Build the public website
 
 - Home, detail, and search exactly as §13.
-- Static generation from approved fixture snapshots.
+- Static generation from verified/published fixture snapshots using schema v2 `last_verified_at` and `published_at` semantics.
 - Calm responsive design, empty/error states, accessibility, evidence links, and stable metadata.
 - Build only from one immutable fixture release; public search uses that release’s local static index.
 
 ### Task 11 — Complete offline end-to-end validation
 
 - Make `make demo` run the whole fixture loop.
-- Complete CI, RLS tests, web E2E, static secret scan, and Gold Set report.
+- Complete CI, RLS/policy tests, web E2E, static secret scan, and Gold Set/shadow report.
 - At this point no cloud account or production secret should be required.
 
 ### Task 12 — External activation checkpoint
@@ -2193,11 +2294,12 @@ Codex should execute in this order.
 - Grow to five live sources, then 15–25 only after stability.
 - Enable three scheduled daily runs.
 - Verify overlap guard, manual retry, quota degradation, and emergency pause.
-- Run at least seven days of shadow review.
+- Run at least seven days of shadow policy/human comparison and report false-auto and review-required-capture denominators.
 
 ### Task 16 — Production release
 
 - Satisfy Definition of Done.
+- Keep live `safe_to_automate` authorization disabled; activating it is not part of the first public launch and requires a separate narrow policy-class decision.
 - Obtain Rui’s explicit launch/DNS approval.
 - Set `SCAM_RADAR_DEPLOY_ENABLED=true` only after that approval.
 - Deploy Pages project `scam-radar`.
@@ -2228,6 +2330,6 @@ If a free plan or integration changes, preserve the product and security boundar
 
 ## Final product sentence
 
-> **骗局雷达持续观察可信公开信源，识别近期出现、尤其可能影响中老年人的骗局或高风险套路，通过 Evidence Gate 和人工审核把它们沉淀为简单、可信、可搜索、可追溯的公共 Scam Pattern 数据库。**
+> **骗局雷达持续观察可信公开信源，识别近期出现、尤其可能影响中老年人的骗局或高风险套路，通过 Evidence Gate 和确定性 Policy Engine 自动处理安全常规项、把例外交给人决定，再沉淀为简单、可信、可搜索、可追溯的公共 Scam Pattern 数据库。**
 
 The website is the first window into the Engine. Social distribution can become its first loudspeaker only after the Engine proves that it can find the right things, support them with evidence, and compress human attention safely.

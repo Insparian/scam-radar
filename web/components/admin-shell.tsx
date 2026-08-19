@@ -10,10 +10,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </span>
           <span>
             <strong>骗局雷达</strong>
-            <small>审核台 · 离线模式</small>
+            <small>运营台 · 影子模式</small>
           </span>
         </Link>
-        <nav aria-label="审核台导航">
+        <nav aria-label="运营台导航">
           <Link href="/admin/review/">
             <span>01</span>Review Queue
           </Link>
@@ -28,8 +28,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </Link>
         </nav>
         <div className="admin-mode">
-          <strong>FIXTURE ONLY</strong>
-          <p>所有操作只留在当前页面，不会写数据库或改变公开版本。</p>
+          <strong>SHADOW · FIXTURE ONLY</strong>
+          <p>自动候选只记录影子结果；所有操作都不会写数据库或改变公开版本。</p>
         </div>
         <Link className="admin-back" href="/">
           ← 返回公开网站

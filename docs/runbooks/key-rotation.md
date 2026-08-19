@@ -16,7 +16,7 @@ Rotate on suspected exposure, unexpected authentication use, staff/access change
 ## Credential-specific notes
 
 - **Supabase publishable key:** public by design; security still depends on grants/RLS. Rotate if project policy requires it and retest anon/reviewer boundaries.
-- **Supabase secret/service role:** bypasses RLS. Rotate immediately on suspicion; retest worker/exporter access and prove it cannot satisfy human approval. Prefer current `sb_secret_...` for new projects; explicitly disable old legacy keys.
+- **Supabase secret/service role:** bypasses RLS. Rotate immediately on suspicion; retest worker/exporter access and prove it cannot impersonate a human, mutate append-only policy decisions, convert a shadow decision to live, or bypass the exact policy-version/hash/gate activation allowlist. Prefer current `sb_secret_...` for new projects; explicitly disable old legacy keys.
 - **Supabase access token / DB password:** used only by protected migration/recovery paths. Rotate and verify no normal worker/web job receives it.
 - **Gemini key:** update only the live-eval/AI step, keep AI disabled during validation, and use a capped non-publishing check.
 - **Cloudflare token:** use a token limited to one account plus Pages Write/Edit, never a Global API Key. Cloudflare does not document per-Pages-project resource scope; use account isolation if required.

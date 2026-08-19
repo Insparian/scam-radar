@@ -32,7 +32,7 @@ This product needs periodic compression of a bounded source set, not low-latency
 
 - Python and TypeScript create two toolchains; root `make` commands hide that complexity from Rui.
 - The database, not runner disk, owns durable state. `work/` is disposable.
-- A schedule may be delayed or dropped. Alerts must show exact review dates and never claim “live” coverage.
+- A schedule may be delayed or dropped. Alerts must show exact information-verification and release-publication dates and never claim “live” coverage.
 - GitHub says schedules run from the latest default-branch commit, can be delayed at high load, and may be disabled after 60 inactive days in public repositories. The workflow therefore runs away from minute zero and has a manual recovery path.
 - Application tests deny outbound network except localhost and inject HTTP transports.
 

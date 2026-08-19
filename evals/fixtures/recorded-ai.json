@@ -2,7 +2,7 @@
   "million-protection-fake-customer-service": {
     "relevance": {"relevant": true, "elderly_relevance": "high", "category": "telecom_scam", "confidence": 0.96, "reason": "冒充客服并诱导屏幕共享和转账。"},
     "extraction": {"suspected_pattern_name": "百万保障假客服", "target_population": ["老年人", "移动支付用户"], "contact_channels": ["电话", "会议软件"], "impersonated_identity": "平台或保险客服", "hook": "百万保障即将扣费", "promise": "协助免费取消", "pressure_tactics": ["当天扣费", "持续通话"], "requested_actions": ["共享屏幕", "转账"], "money_path": "所谓安全账户", "credential_requests": ["验证码"], "technology_used": ["屏幕共享"], "regions": ["CN-GD", "CN-ZJ"], "victim_count": null, "reported_loss": null, "individual_loss": null, "case_date": "2026-08-15", "source_claim_type": "official_case", "official_status": "reported_case", "warning_signs": ["主动催促取消", "要求共享屏幕"], "recommended_actions": ["挂断", "自行联系官方客服"], "supporting_spans": [{"field_path": "hook", "start": 0, "end": 12, "excerpt": "百万保障即将自动扣费"}]},
-    "pattern_match": {"same_pattern": false, "confidence": 0.88, "reason_codes": ["insufficient_features"], "material_change": true, "changes": ["new_execution_step"]}
+    "pattern_match": {"same_pattern": true, "confidence": 0.95, "reason_codes": ["same_pattern"], "material_change": false, "changes": []}
   },
   "family-emergency-impersonation": {
     "relevance": {"relevant": true, "elderly_relevance": "high", "category": "impersonation", "confidence": 0.95, "reason": "冒充亲属制造事故紧急情况并索款。"},

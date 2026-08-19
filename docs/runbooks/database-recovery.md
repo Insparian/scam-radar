@@ -8,7 +8,7 @@ Protect auditability before speed. The deployed static release is the public con
 
 1. Treat local database state and `work/` as disposable.
 2. Rebuild from forward-only migrations and synthetic `supabase/seed.sql` using the repository command.
-3. Run database contract/RLS tests, generated-type drift check, evals, and fixture demo.
+3. Run database contract/RLS tests, generated-type drift check, policy tests, evals, and fixture demo.
 4. Never import a production dump into fixtures or commit generated database state.
 
 No production backup or restore capability has been tested yet.
@@ -24,7 +24,10 @@ No production backup or restore capability has been tested yet.
    - anon has no private access;
    - disabled/auth-only users cannot review;
    - a worker/secret request cannot create an authenticated approval;
-   - approved revisions, release items, and audit events are immutable;
+   - policy decisions and human events retain distinct append-only provenance;
+   - a shadow decision cannot satisfy live policy publication;
+   - verified revisions, release items, policy decisions, and audit events are immutable;
+   - evidence `last_verified_at`, revision `verified_at`, and release `published_at` remain distinct;
    - the deployed release can be exported byte-for-byte by its exact ID.
 7. Cut over or perform a destructive production repair only with a documented rollback plan and Rui's explicit confirmation.
 8. Resume one path at a time: database reads, reviewer actions, one-source collection, AI, then deployment.
@@ -33,7 +36,7 @@ No production backup or restore capability has been tested yet.
 
 - `DROP`, `TRUNCATE`, production reset, destructive type change, or bulk rewrite without verified backup/rollback and confirmation;
 - reverse migration by editing or deleting old migration files;
-- overwrite an approved revision/release to make history look clean;
+- overwrite a verified revision or published release to make history look clean;
 - let a web release depend on an unconfirmed destructive migration;
 - expose production rows, victim PII, source bodies, credentials, or dumps in issues/artifacts.
 

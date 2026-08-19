@@ -46,6 +46,7 @@ def candidate(records: list[EvidenceRecord], **overrides) -> GateCandidate:  # t
 
 def test_a1_official_case_is_level_a() -> None:
     decision = evaluate_evidence(candidate([evidence("one", AuthorityTier.A1, "official_case")]))
+    assert decision.version == "evidence-gate-v0.1"
     assert decision.outcome == GateOutcome.ELIGIBLE
     assert decision.evidence_level == EvidenceLevel.A
     assert decision.public_evidence_label == "警方通报的诈骗案件"

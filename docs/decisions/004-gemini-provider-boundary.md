@@ -3,6 +3,8 @@
 - **Status:** Accepted; live adapter disabled until activation
 - **Date:** 2026-08-16
 
+> **Amended by ADR-007:** Publication routing belongs to a deterministic Policy Engine. Model confidence can only downgrade an otherwise safe policy candidate to human review; it can never grant or increase publication authority.
+
 ## Decision
 
 Domain code depends on a provider-neutral `LLMProvider` protocol with `classify`, `extract`, `compare_patterns`, and a disabled-by-default `embed` capability. V0.1 adds one `GeminiProvider`; offline runs use recorded responses or a fake provider.
@@ -13,7 +15,7 @@ Domain code depends on a provider-neutral `LLMProvider` protocol with `classify`
 - Validate every response again in application code. Structured output constrains shape, not factual truth or semantic correctness.
 - Retry malformed output once; bound transient retries and total calls; never switch automatically to paid capacity or another model/provider.
 - Send only bounded, cleaned, PII-redacted public-source text after activation. Never send reviewer notes, secrets, unrelated content, or source-page instructions as trusted instructions.
-- AI proposes relevance, fields, summaries, and matches. Code decides deterministic Heat; the Evidence Gate and authenticated reviewer decide supportability and publication.
+- AI proposes relevance, fields, summaries, and matches. Code decides deterministic Heat. The Evidence Gate and deterministic Policy Engine decide supportability and routing; an authenticated human decides exception cases.
 - Keep `embed()` in the interface for portability, but do not call it or store vectors until lexical failures justify a separate decision/eval.
 
 ## Why

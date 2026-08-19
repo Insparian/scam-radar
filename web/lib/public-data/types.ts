@@ -28,6 +28,7 @@ export interface EvidenceItem {
   institution: string;
   authority_tier: "A1" | "A2" | "B";
   date: string;
+  last_verified_at: string;
   title: string;
   url: string;
   claim_summary: string;
@@ -61,17 +62,20 @@ export interface PublicPattern {
   regions: string[];
   first_seen_at: string;
   last_material_change_at: string;
-  last_reviewed_at: string;
+  verified_at: string;
+  last_verified_at: string;
   heat: HeatSnapshot;
   timeline: TimelineItem[];
   evidence: EvidenceItem[];
 }
 
 export interface PublicRelease {
-  schema_version: 1;
+  schema_version: 2;
   release_id: string;
   release_no: number;
+  manifest_hash: string;
   generated_at: string;
+  published_at: string;
   as_of: string;
   patterns: PublicPattern[];
 }

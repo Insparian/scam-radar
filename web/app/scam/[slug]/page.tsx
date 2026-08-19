@@ -75,8 +75,8 @@ export default async function PatternPage({
               <span className="evidence-chip">
                 证据 {pattern.evidence_level} · {pattern.evidence_label}
               </span>
-              <span className="reviewed-date">
-                人工审核于 {formatChineseDate(pattern.last_reviewed_at)}
+              <span className="verified-date">
+                信息核实至 {formatChineseDate(pattern.last_verified_at)}
               </span>
             </div>
             <h1>{pattern.canonical_name}</h1>
@@ -204,6 +204,10 @@ export default async function PatternPage({
                             {formatChineseDate(item.date)}
                           </time>
                         </div>
+                        <small className="source-verified">
+                          来源信息核实至{" "}
+                          {formatChineseDate(item.last_verified_at)}
+                        </small>
                         <h3>{item.title}</h3>
                         <p>{item.claim_summary}</p>
                         <a href={item.url} target="_blank" rel="noreferrer">
@@ -254,9 +258,17 @@ export default async function PatternPage({
                 </p>
               </div>
               <div className="aside-note">
-                <strong>最后人工审核</strong>
+                <strong>Last Verified / 信息核实至</strong>
                 <p>
-                  {formatChineseDate(pattern.last_reviewed_at)}
+                  {formatChineseDate(pattern.last_verified_at)}
+                  <br />
+                  取当前内容所依赖证据的最早核实时间
+                </p>
+              </div>
+              <div className="aside-note">
+                <strong>Release / 当前版本形成于</strong>
+                <p>
+                  {formatChineseDate(release.published_at)}
                   <br />
                   内容版本 {pattern.revision_id.slice(0, 8)}
                 </p>

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "dataset_id": "synthetic-contract-baseline-v1",
   "approval_type": "offline_fixture_only",
-  "behavior_hash": "ebe4fe7377dbfe8f9b1fc2df5a840b504cb3e49258a6f4c02b5156255d6f663d",
+  "behavior_hash": "c7349c71075f72b986ac3d966f23cc2e3a8a44d5db6d73d161cdd13d64e3d41e",
   "launch_qualified": false,
   "approved_at": "2026-08-16"
 }

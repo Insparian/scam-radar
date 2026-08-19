@@ -11,7 +11,8 @@ flowchart TB
     end
     subgraph T["Trusted batch runner"]
       N["Bounded fetch + normalize + PII redaction"]
-      P["Deterministic pipeline and gates"]
+      P["Scam Intelligence Engine"]
+      PE["Deterministic Policy Engine"]
       X["Exact release exporter"]
       B["Secret-free static build"]
     end
@@ -20,16 +21,16 @@ flowchart TB
       C["Cloudflare Pages"]
     end
     subgraph D["Private data plane"]
-      DB["Supabase + Auth + reviewer RPCs"]
+      DB["Supabase + Auth + policy/human RPCs"]
     end
     subgraph W["Browsers"]
-      R["Reviewer"]
+      R["Human exception reviewer"]
       V["Public visitor"]
     end
 
-    S --> N --> P
+    S --> N --> P --> PE
     P <-->|"redacted bounded source text / structured proposal"| G
-    P --> DB
+    PE -->|"policy decision + provenance"| DB
     R <-->|"PKCE JWT + narrow actions"| DB
     DB -->|"one release_id"| X --> B -->|"static assets only"| C
     C -->|"HTML/assets/local index"| V
@@ -44,14 +45,14 @@ Source text is data, never instructions. External content cannot change prompt, 
 | F0 | Developer/CI → official npm/PyPI/container registries | Package names, versions, runner IP/timing | Approved bootstrap | Allowed | Pinned direct versions and committed locks; no application data |
 | F1 | Actions runner → allowlisted public source | URL, reviewed request headers, runner IP/timing | Discover/fetch public pages | Disabled until activation | Source Registry, terms/robots review, per-host delay, timeout/retry/caps, kill switch |
 | F2 | Runner → Gemini/Google | Prompt metadata plus bounded cleaned public-source text | Relevance, extraction, comparison proposal | Disabled until activation | PII redaction, no notes/secrets, char/call caps, provider switch, schema + semantic validation |
-| F3 | Runner → Supabase | Source metadata/text, hashes, AI artifacts, evidence proposals, scores, queue/run state | Durable private state | Local containers only | Secret scoped to step, typed storage adapter, TLS live, no body in logs |
-| F4 | Reviewer browser → Supabase | Publishable key, PKCE/Auth session, reads allowed by RLS, RPC action and decision note | Human review | Local fixture/auth only | RLS/grants, enabled admin row, row version, transactional RPC, audit event |
-| F5 | Exporter → Supabase | Exact `release_id` request | Read immutable approved manifest | Local only | Secret-bearing step; release approval checks; no mutable “latest” query |
+| F3 | Runner → Supabase | Source metadata/text, hashes, AI artifacts, evidence proposals, scores, policy decisions, exception/run state | Durable private state | Local containers only | Secret scoped to step, typed storage adapter, append-only decisions, TLS live, no body in logs |
+| F4 | Reviewer browser → Supabase | Publishable key, PKCE/Auth session, reads allowed by RLS, exception action and decision note | Human exception decision or V0.1 shadow confirmation | Local fixture/auth only | RLS/grants, enabled admin row, row version, transactional RPC, distinct human audit |
+| F5 | Exporter → Supabase | Exact `release_id` request | Read immutable published manifest | Local only | Secret-bearing step; verified-revision/release checks; no mutable “latest” query |
 | F6 | Runner → Cloudflare Pages | Hashed compiled static directory | Preview/production publication | Disabled until launch approval | Deploy switch, Pages-only token permission, same-artifact smoke, no backend secret |
 | F7 | Public browser → Cloudflare | Page/asset/search-index paths and ordinary network metadata | Serve public database | Not deployed | One immutable release; no analytics/telemetry |
 | F8 | Public browser local memory/CPU | User's search string and downloaded index | Exact/alias/keyword search | Fixture site only | Query never transmitted, logged, or retained by application |
 
-There is no source → browser path. Public copy is an original reviewed Scam Radar revision, not stored source HTML or an AI response.
+There is no source → browser path. Public copy is an original verified Scam Radar revision, not stored source HTML or an AI response.
 
 ## Collection and normalization
 
@@ -85,28 +86,41 @@ For each new source-item version:
 6. Ask the provider only to compare those candidates. A model cannot merge them.
 7. Propose origin/evidence families so syndication and one underlying case count once.
 8. Run the deterministic Evidence Gate and Heat calculation independently.
-9. Upsert one open review task by stable `dedupe_key`.
+9. Run the versioned deterministic Policy Engine and append `safe_to_automate`, `review_required`, or `blocked` with policy/input/candidate hashes and reason codes.
+10. Route only exceptions to a deduplicated Review Queue. In V0.1 shadow mode, a safe candidate is also queued for human confirmation, but its recorded policy outcome remains safe-to-automate.
 
 AI artifacts store provider, model, prompt/schema versions, input hash, status, bounded result/usage, latency, and reason/error codes. Logs do not contain the source body or full prompt.
 
-## Human review and approval
+## Policy routing and verification
 
 ```mermaid
-sequenceDiagram
-    participant A as Admin browser
-    participant S as Supabase Auth/RPC
-    participant D as PostgreSQL constraints
-    A->>S: PKCE sign-in
-    S-->>A: authenticated session
-    A->>S: review RPC(candidate hash, row version, edits, evidence decisions)
-    S->>D: verify auth.uid + enabled admin + evidence/claim support
-    D->>D: freeze revision + append review event + resolve queue item
-    D-->>A: approved revision, not-yet-public state
+flowchart TD
+    I["Scam Intelligence Engine"] --> P["Policy Engine"]
+    P -->|"safe_to_automate"| A["Safe to automate"]
+    P -->|"review_required"| R["Review required"]
+    P -->|"blocked"| B["Blocked"]
+    A -->|"V0.1 shadow"| H["Human confirmation"]
+    A -.->|"future separately activated class"| V["Policy verification"]
+    R --> H
+    H --> D["Immutable verified revision"]
+    V --> D
+    D --> C["Publication change"]
+    C --> X["Exact public release"]
+    X --> U["Public Database · static artifact"]
 ```
 
-Approval is atomic. If actor, stale-version, Evidence Gate, required claim support, risk/legal wording, or audit insertion fails, no approved revision is created. The worker credential alone has no human `auth.uid()` and cannot satisfy approval triggers.
+The Policy Engine uses explicit typed facts plus `config/publication-policy-v0.1.yaml`. It does not ask a model whether publication is safe. High model confidence cannot remove a deterministic review reason. Low or missing relevance/pattern-match confidence is checked only for an otherwise-safe candidate and may downgrade it to review required.
 
-Reviewer notes and internal evidence spans stay private. Public output includes only reviewed summaries, minimal attribution, evidence links, evidence wording, review dates, and Heat breakdown appropriate for users.
+Policy and human verification are atomic and have distinct provenance:
+
+- `record_policy_decision` stores the immutable rules outcome, effective decision, mode, hashes, reason codes, and any one-way model-confidence downgrade.
+- `confirm_policy_publication` requires `auth.uid()` plus an enabled admin and is the only usable V0.1 confirmation path.
+- `apply_live_policy_publication` requires an eligible live policy decision, matching content/input hashes, and an exact database allowlist tuple of approved `policy_version + policy_hash + gate_version`. That allowlist is empty in V0.1; a boolean flag alone can never activate publication.
+- Legacy direct approval RPCs are revoked from every API role; even an authenticated reviewer must arrive through a non-blocked Policy Decision and the exception RPC.
+
+If actor/decision authority, stale version, Evidence Gate, required claim support, risk/legal wording, hash, or audit insertion fails, no verified revision is created. A generic worker credential cannot impersonate a reviewer, and a shadow decision cannot satisfy the future live policy transaction.
+
+Reviewer notes and internal evidence spans stay private. Public output includes only verified summaries, minimal attribution, evidence links/wording, conservative information-freshness dates, release publication time, and Heat breakdown appropriate for users.
 
 ## Immutable publish flow
 
@@ -116,7 +130,7 @@ sequenceDiagram
     participant X as Export step
     participant B as Secret-free Next build
     participant C as Cloudflare Pages
-    DB->>DB: prepare_public_release() freezes manifest
+    DB->>DB: prepare_public_release() freezes authorized verified manifest
     X->>DB: export exact release_id
     DB-->>X: public-release.json + search-index.json
     Note over X,B: SUPABASE_SECRET_KEY exists only in export step
@@ -129,15 +143,24 @@ sequenceDiagram
     B->>DB: record_deployed_release()
 ```
 
-The production upload is the irreversible publication point and is not enabled during offline work. If its final database record fails, reconciliation reads live `release.json` and retries the idempotent record; it does not rebuild or pretend nothing is public. If production smoke fails, deploy the last known-good artifact and record both deployment IDs.
+`prepare_public_release()` fixes `public_releases.published_at` when the revision becomes part of the immutable public-release manifest; that value is hashed into the artifact and never changes. It does **not** mean Cloudflare upload has succeeded. The production upload is the irreversible live-deployment point and is not enabled during offline work; `deployed_at` plus the deployment record capture that later event. If its final database record fails, reconciliation reads live `release.json` and retries the idempotent record; it does not rebuild or pretend nothing is public. If production smoke fails, deploy the last known-good artifact and record both deployment IDs.
+
+Release schema v2 keeps time semantics separate:
+
+- `pattern_evidence.last_verified_at`: actual evidence check time;
+- `pattern_revisions.verified_at`: internal policy or human verification time;
+- public `pattern.last_verified_at`: minimum verification time among evidence supporting the revision's claims; and
+- `public_releases.published_at`: immutable public-release manifest freeze time; deployment has its own `deployed_at`.
+
+Evidence may be rechecked after a revision decision, so evidence freshness is not required to precede `revision.verified_at`. Both clocks are independently required and must not be later than the release freeze.
 
 ## Data classification and retention
 
 | Class | Examples | Storage/location | Retention rule |
 |---|---|---|---|
-| Public reviewed | Canonical pattern copy, evidence label/links, review date, pinned Heat | Immutable release JSON and static assets | Indefinite versioned releases unless a reviewed retention decision changes this |
+| Public verified | Canonical pattern copy, evidence label/links, conservative last-verified date, release published-at, pinned Heat | Immutable release JSON and static assets | Indefinite versioned releases unless a reviewed retention decision changes this |
 | Private source/evidence | Bounded relevant clean text, source metadata, spans, claim mappings | Supabase only | Preserve for traceability/recheck; never put in public artifact |
-| Private editorial | Drafts, notes, queue payloads, admin identities, audit events | Supabase only | Audit append-only; corrections add events/revisions |
+| Private decision | Drafts, notes, queue payloads, admin identities, policy decisions, human audit events | Supabase only | Policy/human audit append-only; corrections add events/revisions |
 | Restricted credentials | Supabase secret, Gemini key, Cloudflare token, DB password | Local ignored env or scoped GitHub secret | Never committed/logged; rotate on suspected exposure |
 | Transient untrusted | Raw HTML/bytes and arbitrary response headers | Runner memory/temporary file only | Delete immediately after bounded normalization; never upload as artifact |
 | Disposable build/test | Fixture run output and release staging | Namespaced `work/` | Re-creatable and ignored; safe cleanup only within the namespace |
@@ -149,7 +172,7 @@ All database timestamps are UTC. Only the UI localizes them. Logs use IDs, hashe
 
 - Source failure records a source result and leaves its cursor uncommitted; other sources can succeed.
 - Gemini quota/failure leaves work `pending_ai`; prior public content remains unchanged.
-- Evidence correction/withdrawal creates a `gate_regression` review item; it never silently edits approved history.
+- Evidence correction/withdrawal blocks automation and creates a `gate_regression` exception item; it never silently edits verified history.
 - Database/lease/schema failure stops the run closed.
 - Build/preview failure leaves production unchanged.
 - Collection or AI kill switches do not block a separately approved urgent unpublish release.
@@ -157,7 +180,7 @@ All database timestamps are UTC. Only the UI localizes them. Logs use IDs, hashe
 
 ## Activation checklist for data movement
 
-Before enabling F1–F7, Rui must review the exact first five URLs and collection policies, Supabase region/data-location implications, bounded Google payload, free-tier caps, required secrets, reviewer identity, Cloudflare account/token scope, and domain change. Approval must be explicit; provisioning alone does not enable collection, AI, deploy, or DNS.
+Before enabling F1–F7, Rui must review the exact first five URLs and collection policies, Supabase region/data-location implications, bounded Google payload, free-tier caps, required secrets, reviewer identity, Cloudflare account/token scope, and domain change. Approval must be explicit; provisioning alone does not enable collection, AI, deploy, DNS, or live policy authorization. Turning on `apply_live_policy_publication` is a separate decision after shadow-mode performance is measured for a narrowly defined class.
 
 ## Official platform references rechecked
 

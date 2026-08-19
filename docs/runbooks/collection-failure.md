@@ -19,7 +19,7 @@ Recover collection without skipping source items, leaking source text, or distur
 2. Save only a minimal permitted/redacted fixture; never commit a full production page.
 3. Add the failing contract test before changing the parser.
 4. Fix the narrow source adapter and run its fixture test plus `make collect-dry-run`.
-5. Rerun the same fixture twice and confirm no duplicate item/version/review task.
+5. Rerun the same fixture twice and confirm no duplicate item/version/policy decision/exception task.
 6. After activation only, manually run that one approved source under reduced caps, then confirm its cursor advances exactly once.
 
 If login, CAPTCHA, blocking, paywall, terms, or robots prevents collection, keep/mark the source disabled. Do not evade the control, rotate proxies, or weaken limits.
@@ -29,9 +29,10 @@ If login, CAPTCHA, blocking, paywall, terms, or robots prevents collection, keep
 - Invalid registry: fix reviewed config and rerun schema validation.
 - Lease failure: confirm the prior lease is truly expired; do not create a second overlapping run.
 - Schema mismatch: stop closed and apply only the reviewed forward migration path.
+- Policy version/hash mismatch or missing deterministic input: stop the candidate closed as `review_required` or `blocked`. Never substitute model confidence or a default “safe” result.
 - Credential failure: follow [key rotation](key-rotation.md); do not print the key.
 - Database incident: follow [database recovery](database-recovery.md).
 
 ## Close the incident
 
-Verify funnel counts, per-source result, cursor, idempotency, backlog, and unchanged deployed `release_id`. Add the real edge case as a permitted fixture/eval regression and record what failed, why, user impact, and verification.
+Verify funnel counts, policy outcomes/reasons, shadow-auto count, per-source result, cursor, idempotency, exception backlog, and unchanged deployed `release_id`. Add the real edge case as a permitted fixture/eval regression and record what failed, why, user impact, and verification.

@@ -1,5 +1,5 @@
 {
-  "million-protection-fake-customer-service": {"target_relevance":"older_adults","harm":"major_loss_or_takeover","spread":"two_provinces","novelty":"new_script_or_step","source_claim_type":"official_case"},
+  "million-protection-fake-customer-service": {"target_relevance":"older_adults","harm":"major_loss_or_takeover","spread":"two_provinces","novelty":"new_script_or_step","source_claim_type":"official_case","review_type":"pattern_update","existing_public_pattern":true,"public_copy_changed":false},
   "family-emergency-impersonation": {"target_relevance":"broad_with_older_risk","harm":"major_loss_or_takeover","spread":"multiple_cities","novelty":"new_script_or_step","source_claim_type":"media_report"},
   "collectibles-high-price-buyback": {"target_relevance":"older_adults","harm":"major_loss_or_takeover","spread":"multiple_cases_one_region","novelty":"new_packaging","source_claim_type":"official_case"},
   "free-health-check-sales-risk": {"target_relevance":"older_adults","harm":"data_or_grooming","spread":"single_case","novelty":"new_packaging","source_claim_type":"regulator_warning"},

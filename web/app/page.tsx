@@ -46,7 +46,7 @@ export default function HomePage() {
                 值得提醒爸妈？
               </h1>
               <p>
-                先看懂对方在做什么，再决定下一步。每条记录都经过证据门槛和人工审核。
+                先看懂对方在做什么，再决定下一步。每条记录都要通过证据门槛和固定发布规则。
               </p>
             </div>
             <div className="hero-search-card">
@@ -62,7 +62,7 @@ export default function HomePage() {
               <b>01</b> 只看经过选择的可信来源
             </span>
             <span>
-              <b>02</b> AI 提议，证据和人做决定
+              <b>02</b> AI 只整理，证据和规则做决定
             </span>
             <span>
               <b>03</b> 没查到，不代表一定安全
@@ -203,14 +203,15 @@ export default function HomePage() {
                 </div>
               </article>
               <article>
-                <span className="method-letter">审</span>
+                <span className="method-letter">策</span>
                 <div>
                   <h3>
-                    <span>人工审核</span>
-                    <span className="method-term">Human Review</span>
+                    <span>发布分流</span>
+                    <span className="method-term">Policy Engine</span>
                   </h3>
                   <p>
-                    只有审核员确认证据、措辞和保护建议后，才会进入下一次不可变的公开版本。
+                    代码按固定规则判断哪些常规更新可自动处理；证据、措辞或风险有例外时才交给人决定。V0.1
+                    先记录自动路径的影子结果，仍保留人工确认。
                   </p>
                 </div>
               </article>
@@ -241,7 +242,7 @@ export default function HomePage() {
             <span>03</span>
             <h2>更正与下架</h2>
             <p>
-              每条内容都有人工审核时间和证据链接。当前是离线演示；正式上线前会公布更正和紧急下架联系方式。
+              每条内容都有“信息核实至”日期和证据链接。当前是离线演示；正式上线前会公布更正和紧急下架联系方式。
             </p>
           </article>
           <article id="about">

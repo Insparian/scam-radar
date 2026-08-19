@@ -20,12 +20,15 @@ from scam_radar.domain import (
     LegalStatus,
     NormalizedItem,
     PipelineSummary,
+    PolicyInput,
+    PolicyOutcome,
     RiskType,
 )
 from scam_radar.evidence.gate import evaluate_evidence
 from scam_radar.llm.recorded import RecordedProvider
 from scam_radar.normalize.text import normalize_text
-from scam_radar.review.queue import make_review_candidate
+from scam_radar.policy.engine import evaluate_policy, load_publication_policy
+from scam_radar.review.queue import make_review_candidate, stable_hash
 from scam_radar.scoring.heat import calculate_heat
 from scam_radar.storage.memory import MemoryStore
 
@@ -72,6 +75,9 @@ class FixturePipeline:
         self.recorded = load_json(fixture_root / "recorded-ai.json")
         self.pipeline_input = load_json(fixture_root / "pipeline-input.json")
         self.provider = RecordedProvider(self.recorded)
+        self.publication_policy = load_publication_policy(
+            repository_root / "config" / "publication-policy-v0.1.yaml"
+        )
 
     def _normalized_item(self, pattern: dict[str, Any]) -> NormalizedItem:
         text = "\n".join(
@@ -164,22 +170,69 @@ class FixturePipeline:
                     f"{heat.score} != {pattern['heat']['score']}"
                 )
                 raise ValueError(message)
-            review = make_review_candidate(
+            candidate_payload = {
+                "canonical_name": pattern["canonical_name"],
+                "extraction": extraction.model_dump(mode="json"),
+                "gate": gate.model_dump(mode="json"),
+                "heat": heat.model_dump(mode="json"),
+            }
+            review_type = fixture_features.get("review_type", "new_pattern")
+            policy_input = PolicyInput(
                 target_id=pattern["id"],
-                review_type="new_pattern",
+                candidate_hash=stable_hash(candidate_payload),
+                gate_version=gate.version,
+                review_type=review_type,
+                gate_outcome=gate.outcome,
                 evidence_level=gate.evidence_level,
-                heat_score=heat.score,
-                material_date=features.last_material_change_at,
-                reason_codes=comparison.reason_codes,
-                payload={
-                    "canonical_name": pattern["canonical_name"],
-                    "extraction": extraction.model_dump(mode="json"),
-                    "gate": gate.model_dump(mode="json"),
-                    "heat": heat.model_dump(mode="json"),
-                },
+                existing_public_pattern=fixture_features.get("existing_public_pattern", False),
+                material_change=comparison.material_change,
+                public_copy_changed=fixture_features.get("public_copy_changed", True),
+                claims_fully_supported=True,
+                all_supporting_evidence_verified=all(
+                    isinstance(item.get("last_verified_at"), str) and bool(item["last_verified_at"])
+                    for item in pattern["evidence"]
+                ),
+                named_entity_risk=False,
+                legal_status_changed=False,
+                evidence_level_changed=False,
+                source_regression=False,
+                requires_merge_or_split=False,
+                relevance_confidence=relevance.confidence,
+                pattern_match_confidence=comparison.confidence,
             )
-            if self.store.upsert_review(review):
-                counts["review_items"] += 1
+            policy_decision = evaluate_policy(self.publication_policy, policy_input)
+            if self.store.upsert_policy_decision(policy_decision):
+                counts[f"policy:{policy_decision.outcome}"] += 1
+                if (
+                    policy_decision.outcome == PolicyOutcome.SAFE_TO_AUTOMATE
+                    and policy_decision.shadow_mode
+                ):
+                    counts["shadow_auto_candidates"] += 1
+                if policy_decision.publication_authorized:
+                    counts["auto_publication_authorized"] += 1
+
+            should_queue_review = policy_decision.outcome == PolicyOutcome.REVIEW_REQUIRED or (
+                policy_decision.outcome == PolicyOutcome.SAFE_TO_AUTOMATE
+                and not policy_decision.publication_authorized
+            )
+            if should_queue_review:
+                review_reason_codes = [
+                    *comparison.reason_codes,
+                    *policy_decision.reason_codes,
+                ]
+                if policy_decision.outcome == PolicyOutcome.SAFE_TO_AUTOMATE:
+                    review_reason_codes.append("shadow_confirmation_required")
+                review = make_review_candidate(
+                    target_id=pattern["id"],
+                    review_type=review_type,
+                    evidence_level=gate.evidence_level,
+                    heat_score=heat.score,
+                    material_date=features.last_material_change_at,
+                    reason_codes=review_reason_codes,
+                    payload=candidate_payload,
+                )
+                if self.store.upsert_review(review):
+                    counts["review_items"] += 1
             patterns.append(pattern)
 
         output_release = {**self.release, "patterns": patterns or self.release["patterns"]}
@@ -197,7 +250,9 @@ class FixturePipeline:
                 {
                     "release_id": self.release["release_id"],
                     "schema_version": self.release["schema_version"],
+                    "manifest_hash": self.release["manifest_hash"],
                     "pattern_count": len(output_release["patterns"]),
+                    "published_at": self.release["published_at"],
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -215,6 +270,11 @@ class FixturePipeline:
             review_items=counts["review_items"],
             eligible=counts["eligible"],
             blocked=counts["blocked"],
+            policy_safe_to_automate=counts[f"policy:{PolicyOutcome.SAFE_TO_AUTOMATE}"],
+            policy_review_required=counts[f"policy:{PolicyOutcome.REVIEW_REQUIRED}"],
+            policy_blocked=counts[f"policy:{PolicyOutcome.BLOCKED}"],
+            shadow_auto_candidates=counts["shadow_auto_candidates"],
+            auto_publication_authorized=counts["auto_publication_authorized"],
             output_release_id=self.release["release_id"],
             reason_counts={
                 key.removeprefix("reason:"): value

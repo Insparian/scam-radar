@@ -40,10 +40,16 @@ class LegalStatus(StrEnum):
 
 
 class GateOutcome(StrEnum):
-    ELIGIBLE = "eligible_for_review"
+    ELIGIBLE = "eligible_for_policy"
     NEEDS_MORE_EVIDENCE = "needs_more_evidence"
     BLOCKED = "blocked"
     DUPLICATE = "duplicate"
+
+
+class PolicyOutcome(StrEnum):
+    SAFE_TO_AUTOMATE = "safe_to_automate"
+    REVIEW_REQUIRED = "review_required"
+    BLOCKED = "blocked"
 
 
 class RelevanceResult(StrictModel):
@@ -145,6 +151,7 @@ class GateCandidate(StrictModel):
 
 
 class GateDecision(StrictModel):
+    version: Literal["evidence-gate-v0.1"] = "evidence-gate-v0.1"
     outcome: GateOutcome
     evidence_level: EvidenceLevel
     reason_codes: list[str]
@@ -221,6 +228,67 @@ class ReviewCandidate(StrictModel):
     dedupe_key: str
 
 
+class PolicyInput(StrictModel):
+    target_id: str
+    candidate_hash: str = Field(min_length=64, max_length=64)
+    gate_version: Literal["evidence-gate-v0.1"] = "evidence-gate-v0.1"
+    review_type: Literal[
+        "new_pattern",
+        "pattern_update",
+        "merge",
+        "evidence_change",
+        "public_copy",
+        "gate_regression",
+        "source_health",
+    ]
+    gate_outcome: GateOutcome
+    evidence_level: EvidenceLevel
+    existing_public_pattern: bool
+    material_change: bool
+    public_copy_changed: bool
+    claims_fully_supported: bool
+    all_supporting_evidence_verified: bool
+    named_entity_risk: bool
+    legal_status_changed: bool
+    evidence_level_changed: bool
+    source_regression: bool
+    requires_merge_or_split: bool
+    relevance_confidence: float | None = Field(default=None, ge=0, le=1)
+    pattern_match_confidence: float | None = Field(default=None, ge=0, le=1)
+
+
+class PolicyDecision(StrictModel):
+    rules_outcome: PolicyOutcome
+    outcome: PolicyOutcome
+    gate_version: str
+    policy_version: str
+    policy_hash: str = Field(min_length=64, max_length=64)
+    candidate_hash: str = Field(min_length=64, max_length=64)
+    input_hash: str = Field(min_length=64, max_length=64)
+    reason_codes: list[str] = Field(min_length=1)
+    model_confidence_downgrade: bool
+    shadow_mode: bool
+    publication_authorized: bool
+
+    @model_validator(mode="after")
+    def authority_matches_outcome(self) -> PolicyDecision:
+        if self.model_confidence_downgrade:
+            if not (
+                self.rules_outcome == PolicyOutcome.SAFE_TO_AUTOMATE
+                and self.outcome == PolicyOutcome.REVIEW_REQUIRED
+            ):
+                raise ValueError(
+                    "model confidence may only downgrade safe_to_automate to review_required"
+                )
+        elif self.outcome != self.rules_outcome:
+            raise ValueError("policy outcome cannot differ without a confidence downgrade")
+        if self.publication_authorized and self.outcome != PolicyOutcome.SAFE_TO_AUTOMATE:
+            raise ValueError("only safe_to_automate may grant publication authority")
+        if self.publication_authorized and self.shadow_mode:
+            raise ValueError("shadow decisions cannot grant publication authority")
+        return self
+
+
 class PipelineSummary(StrictModel):
     run_id: str
     discovered: int = 0
@@ -231,5 +299,10 @@ class PipelineSummary(StrictModel):
     review_items: int = 0
     eligible: int = 0
     blocked: int = 0
+    policy_safe_to_automate: int = 0
+    policy_review_required: int = 0
+    policy_blocked: int = 0
+    shadow_auto_candidates: int = 0
+    auto_publication_authorized: int = 0
     output_release_id: str | None = None
     reason_counts: dict[str, int] = Field(default_factory=dict)

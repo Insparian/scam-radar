@@ -20,7 +20,7 @@ export default function PatternsAdminPage() {
           <span>类型</span>
           <span>证据</span>
           <span>Heat</span>
-          <span>人工审核</span>
+          <span>信息核实至</span>
         </div>
         {release.patterns.map((pattern) => (
           <Link
@@ -38,7 +38,7 @@ export default function PatternsAdminPage() {
             <span>{pattern.risk_type}</span>
             <span>{pattern.evidence_level}</span>
             <span>{pattern.heat.score}</span>
-            <span>{formatChineseDate(pattern.last_reviewed_at)}</span>
+            <span>{formatChineseDate(pattern.last_verified_at)}</span>
           </Link>
         ))}
       </div>

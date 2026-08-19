@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-08-16
 
+> **Amended by ADR-007:** Public content still changes only through immutable releases, but revision verification may eventually come from a narrowly activated deterministic policy path or a human exception decision. V0.1 policy outcomes remain shadow-only.
+
 ## Decision
 
 Build `web/` with the Next.js App Router and `output: "export"`. Public pages are generated only from one local immutable release artifact. Reviewer pages are also static shells; their authenticated behavior runs in the browser.
@@ -25,7 +27,7 @@ const nextConfig = {
 
 ## Why
 
-Public content changes only after human approval, so a rebuild is acceptable. Static output removes an always-on application server, keeps the public site available when the worker/database/AI is unhealthy, and makes it possible to publish page routes and search as one exact release.
+Public content changes only after an authorized verified revision enters an immutable release, so a rebuild is acceptable. Static output removes an always-on application server, keeps the public site available when the worker/database/AI is unhealthy, and makes it possible to publish page routes and search as one exact release.
 
 ## Alternatives
 

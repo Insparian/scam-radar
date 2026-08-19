@@ -48,7 +48,7 @@ export function ReviewConsole({
   if (!selected)
     return (
       <main id="main-content" className="admin-page">
-        <h1>审核队列为空</h1>
+        <h1>没有需要人工决定的例外</h1>
       </main>
     );
 
@@ -57,11 +57,14 @@ export function ReviewConsole({
       <header className="admin-page-header">
         <div>
           <span className="admin-eyebrow">
-            REVIEW QUEUE ·{" "}
+            EXCEPTION REVIEW ·{" "}
             {items.filter((item) => item.status === "pending").length} PENDING
           </span>
-          <h1>Review Queue</h1>
-          <p>先看证据和边界，再看文案是否好读。</p>
+          <h1>需要人工决定</h1>
+          <p>
+            Policy Engine 已完成分流；这里只处理规则要求人工决定的例外，以及
+            V0.1 的影子自动候选确认。
+          </p>
         </div>
         <div className="admin-release">
           <span>公开版本</span>
@@ -74,7 +77,7 @@ export function ReviewConsole({
         </div>
       )}
       <div className="review-layout">
-        <aside className="queue-list" aria-label="审核项目">
+        <aside className="queue-list" aria-label="需要人工决定的项目">
           {items.map((item) => (
             <button
               className={item.id === selected.id ? "selected" : ""}
@@ -102,12 +105,23 @@ export function ReviewConsole({
         <article className="review-detail">
           <div className="review-topline">
             <span>
-              {selected.reviewType === "new_pattern"
-                ? "建议创建新 Pattern"
-                : "建议更新 Pattern"}
+              POLICY ENGINE → {selected.policyOutcome.replaceAll("_", " ")}
             </span>
             <span>优先级 {selected.priority}</span>
           </div>
+          <section className="policy-route" aria-label="Policy Engine 路由">
+            <div>
+              <span>确定性判定</span>
+              <strong>{selected.policyOutcome}</strong>
+            </div>
+            <p>
+              {selected.policyReasonCodes.join(" · ")}
+              <br />
+              {selected.shadowMode
+                ? "V0.1 影子模式：即使符合自动路径，也不会获得发布权限。"
+                : "当前运行已激活指定策略类别的自动授权。"}
+            </p>
+          </section>
           <h2>{selected.pattern.canonical_name}</h2>
           <p className="review-summary">
             {selected.pattern.one_sentence_summary}
@@ -183,6 +197,7 @@ export function ReviewConsole({
             <span>Model {selected.modelVersion}</span>
             <span>Prompt {selected.promptVersion}</span>
             <span>Schema {selected.schemaVersion}</span>
+            <span>Policy {selected.policyVersion}</span>
           </section>
           <label className="decision-note">
             决定说明（离线演示）
@@ -194,11 +209,16 @@ export function ReviewConsole({
             />
           </label>
           <div className="primary-actions">
-            <button onClick={() => decide("update")}>Approve Update</button>
-            <button onClick={() => decide("create")}>Create New Pattern</button>
-            <button onClick={() => decide("merge")}>Merge</button>
+            {selected.reviewType === "pattern_update" ? (
+              <button onClick={() => decide("update")}>确认更新</button>
+            ) : (
+              <>
+                <button onClick={() => decide("create")}>建立新记录</button>
+                <button onClick={() => decide("merge")}>合并到已有记录</button>
+              </>
+            )}
             <button className="danger-action" onClick={() => decide("reject")}>
-              Reject
+              不公开
             </button>
           </div>
           <button className="hold-action" onClick={() => decide("hold")}>

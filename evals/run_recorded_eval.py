@@ -7,12 +7,17 @@ from pathlib import Path
 
 from scam_radar.domain import (
     AuthorityTier,
+    EvidenceLevel,
     EvidenceRecord,
     GateCandidate,
+    GateOutcome,
     LegalStatus,
+    PolicyInput,
+    PolicyOutcome,
     RiskType,
 )
 from scam_radar.evidence.gate import evaluate_evidence
+from scam_radar.policy.engine import evaluate_policy, load_publication_policy
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,6 +37,10 @@ class Metrics:
     heat_determinism_rate: float
     expected_heat_band_rate: float
     queue_top_group_rate: float
+    policy_authority_monotonicity_rate: float
+    shadow_authority_denial_rate: float
+    shadow_safe_candidates: int
+    shadow_false_authorizations: int
     severe_unsupported_accusations: int
     launch_qualified: bool
     behavior_hash: str
@@ -44,6 +53,7 @@ def behavior_hash() -> str:
         ROOT / "config" / "taxonomy.yaml",
         ROOT / "config" / "scoring-v0.1.yaml",
         ROOT / "config" / "models.yaml",
+        ROOT / "config" / "publication-policy-v0.1.yaml",
     ]
     digest = hashlib.sha256()
     for path in paths:
@@ -77,7 +87,7 @@ def synthetic_gate_cases() -> list[tuple[bool, bool]]:
                 mapped_public_fields=fields,
             )
         )
-        cases.append((True, decision.outcome == "eligible_for_review"))
+        cases.append((True, decision.outcome == "eligible_for_policy"))
     for index in range(20):
         evidence = [
             EvidenceRecord(
@@ -99,7 +109,7 @@ def synthetic_gate_cases() -> list[tuple[bool, bool]]:
                 mapped_public_fields=fields,
             )
         )
-        cases.append((True, decision.outcome == "eligible_for_review"))
+        cases.append((True, decision.outcome == "eligible_for_policy"))
     for index in range(20):
         evidence = EvidenceRecord(
             evidence_id=f"c-{index}",
@@ -118,7 +128,7 @@ def synthetic_gate_cases() -> list[tuple[bool, bool]]:
                 mapped_public_fields=fields,
             )
         )
-        cases.append((False, decision.outcome == "eligible_for_review"))
+        cases.append((False, decision.outcome == "eligible_for_policy"))
     cases.extend([(False, False)] * 25)  # legitimate or unrelated negative controls
     cases.extend(
         [(False, False)] * 15
@@ -126,8 +136,73 @@ def synthetic_gate_cases() -> list[tuple[bool, bool]]:
     return cases
 
 
+def synthetic_policy_checks() -> tuple[list[bool], list[bool], int]:
+    publication_policy = load_publication_policy(
+        ROOT / "config" / "publication-policy-v0.1.yaml"
+    )
+    base = {
+        "target_id": "eval-pattern",
+        "candidate_hash": "a" * 64,
+        "review_type": "pattern_update",
+        "gate_outcome": GateOutcome.ELIGIBLE,
+        "evidence_level": EvidenceLevel.A,
+        "existing_public_pattern": True,
+        "material_change": False,
+        "public_copy_changed": False,
+        "claims_fully_supported": True,
+        "all_supporting_evidence_verified": True,
+        "named_entity_risk": False,
+        "legal_status_changed": False,
+        "evidence_level_changed": False,
+        "source_regression": False,
+        "requires_merge_or_split": False,
+        "relevance_confidence": 0.99,
+        "pattern_match_confidence": 0.99,
+    }
+    safe = evaluate_policy(publication_policy, PolicyInput.model_validate(base))
+    low_confidence = evaluate_policy(
+        publication_policy,
+        PolicyInput.model_validate({**base, "pattern_match_confidence": None}),
+    )
+    high_confidence_first_publication = evaluate_policy(
+        publication_policy,
+        PolicyInput.model_validate(
+            {
+                **base,
+                "review_type": "new_pattern",
+                "existing_public_pattern": False,
+            }
+        ),
+    )
+    high_confidence_blocked = evaluate_policy(
+        publication_policy,
+        PolicyInput.model_validate({**base, "gate_outcome": GateOutcome.BLOCKED}),
+    )
+    monotonic_checks = [
+        safe.rules_outcome == safe.outcome == PolicyOutcome.SAFE_TO_AUTOMATE,
+        low_confidence.rules_outcome == PolicyOutcome.SAFE_TO_AUTOMATE,
+        low_confidence.outcome == PolicyOutcome.REVIEW_REQUIRED,
+        low_confidence.model_confidence_downgrade,
+        high_confidence_first_publication.rules_outcome
+        == high_confidence_first_publication.outcome
+        == PolicyOutcome.REVIEW_REQUIRED,
+        high_confidence_blocked.rules_outcome
+        == high_confidence_blocked.outcome
+        == PolicyOutcome.BLOCKED,
+    ]
+    shadow_safe = [
+        safe.gate_version == "evidence-gate-v0.1"
+        and safe.outcome == PolicyOutcome.SAFE_TO_AUTOMATE
+        and safe.shadow_mode
+        and not safe.publication_authorized
+    ]
+    return monotonic_checks, shadow_safe, 1
+
+
 def main() -> int:
-    policy = json.loads((ROOT / "evals/expected/quality-gates.json").read_text())
+    quality_policy = json.loads(
+        (ROOT / "evals/expected/quality-gates.json").read_text()
+    )
     cases = synthetic_gate_cases()
     true_positive = sum(expected and actual for expected, actual in cases)
     false_positive = sum(not expected and actual for expected, actual in cases)
@@ -136,6 +211,7 @@ def main() -> int:
     precision = true_positive / (true_positive + false_positive or 1)
     cd_cases = cases[40:60]
     cd_block_rate = sum(not actual for _, actual in cd_cases) / len(cd_cases)
+    monotonic_checks, shadow_checks, shadow_safe_candidates = synthetic_policy_checks()
     metrics = Metrics(
         dataset_id="synthetic-contract-baseline-v1",
         total_cases=len(cases),
@@ -150,16 +226,23 @@ def main() -> int:
         heat_determinism_rate=1.0,
         expected_heat_band_rate=1.0,
         queue_top_group_rate=1.0,
+        policy_authority_monotonicity_rate=sum(monotonic_checks)
+        / len(monotonic_checks),
+        shadow_authority_denial_rate=sum(shadow_checks) / len(shadow_checks),
+        shadow_safe_candidates=shadow_safe_candidates,
+        shadow_false_authorizations=sum(not value for value in shadow_checks),
         severe_unsupported_accusations=0,
         launch_qualified=False,
         behavior_hash=behavior_hash(),
     )
     checks = [
-        recall >= policy["relevance_recall_min"],
-        precision >= policy["public_eligibility_precision_min"],
-        cd_block_rate == policy["cd_public_block_rate"],
+        recall >= quality_policy["relevance_recall_min"],
+        precision >= quality_policy["public_eligibility_precision_min"],
+        cd_block_rate == quality_policy["cd_public_block_rate"],
+        metrics.policy_authority_monotonicity_rate == 1.0,
+        metrics.shadow_authority_denial_rate == 1.0,
         metrics.severe_unsupported_accusations
-        <= policy["severe_unsupported_accusations_max"],
+        <= quality_policy["severe_unsupported_accusations_max"],
     ]
     if not all(checks) or len(cases) != 100:
         raise RuntimeError("offline eval quality gate failed")

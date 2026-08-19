@@ -8,6 +8,10 @@ export interface FixtureReviewItem {
   status: "pending" | "approved" | "rejected" | "needs_evidence";
   priority: number;
   reasonCodes: string[];
+  policyOutcome: "safe_to_automate" | "review_required" | "blocked";
+  policyVersion: "publication-policy-v0.1";
+  policyReasonCodes: string[];
+  shadowMode: boolean;
   pattern: PublicPattern;
   extractionUncertainties: string[];
   modelVersion: string;

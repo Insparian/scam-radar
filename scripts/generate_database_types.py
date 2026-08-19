@@ -212,7 +212,7 @@ def normalize_sql_type(raw_type: str) -> str:
 
 def extract_sql_type(definition: str) -> tuple[str, str]:
     match = re.match(
-        r"(uuid\[\]|text\[\]|uuid|text|boolean|smallint|integer|bigint|numeric\s*\([^)]*\)|numeric|date|timestamptz|jsonb)\b(.*)",
+        r"(uuid\[\]|text\[\]|uuid|text|boolean|smallint|integer|bigint|numeric\s*\([^)]*\)|numeric|date|timestamptz|jsonb)(?=\s|$)(.*)",
         definition,
         flags=re.IGNORECASE | re.DOTALL,
     )
@@ -371,14 +371,104 @@ def parse_tables(sql: str) -> tuple[Table, ...]:
             )
         )
 
-    return tuple(
-        Table(
+    tables_by_name = {
+        table.name: Table(
             table.name,
             table.columns,
             table.relationships + tuple(extra_relationships.get(table.name, ())),
         )
         for table in tables
+    }
+
+    alter_table_pattern = re.compile(
+        r"alter\s+table\s+public\.([a-z_][a-z0-9_]*)\s+(.+?);",
+        re.IGNORECASE | re.DOTALL,
     )
+    for alter_match in alter_table_pattern.finditer(sql):
+        table_name = alter_match.group(1)
+        table = tables_by_name.get(table_name)
+        if table is None:
+            continue
+
+        columns = list(table.columns)
+        relationships = list(table.relationships)
+        for clause in split_top_level(alter_match.group(2)):
+            add_column_match = re.match(
+                r"add\s+column\s+\"?([a-z_][a-z0-9_]*)\"?\s+(.+)$",
+                clause,
+                re.IGNORECASE | re.DOTALL,
+            )
+            if add_column_match:
+                column_name = add_column_match.group(1)
+                definition = add_column_match.group(2).strip()
+                if any(column.name == column_name for column in columns):
+                    raise ValueError(
+                        f"Duplicate added column in {table_name}: {column_name}"
+                    )
+                raw_type, remainder = extract_sql_type(definition)
+                column = Column(
+                    name=column_name,
+                    ts_type=normalize_sql_type(raw_type),
+                    nullable=not bool(
+                        re.search(r"\bnot\s+null\b", remainder, re.IGNORECASE)
+                    ),
+                    has_default=bool(
+                        re.search(
+                            r"\bdefault\b|\bgenerated\s+always\b",
+                            remainder,
+                            re.IGNORECASE,
+                        )
+                    ),
+                )
+                columns.append(column)
+
+                reference_match = re.search(
+                    r"references\s+public\.([a-z_][a-z0-9_]*)\s*\(([^)]+)\)",
+                    definition,
+                    re.IGNORECASE,
+                )
+                if reference_match:
+                    relationships.append(
+                        Relationship(
+                            name=f"{table_name}_{column_name}_fkey",
+                            columns=(column_name,),
+                            referenced_relation=reference_match.group(1),
+                            referenced_columns=tuple(
+                                part.strip().strip('"')
+                                for part in reference_match.group(2).split(",")
+                            ),
+                            is_one_to_one=False,
+                        )
+                    )
+                continue
+
+            alter_null_match = re.match(
+                r"alter\s+column\s+\"?([a-z_][a-z0-9_]*)\"?\s+(set|drop)\s+not\s+null$",
+                clause.strip(),
+                re.IGNORECASE,
+            )
+            if alter_null_match:
+                column_name = alter_null_match.group(1)
+                nullable = alter_null_match.group(2).lower() == "drop"
+                for index, column in enumerate(columns):
+                    if column.name == column_name:
+                        columns[index] = Column(
+                            name=column.name,
+                            ts_type=column.ts_type,
+                            nullable=nullable,
+                            has_default=column.has_default,
+                        )
+                        break
+                else:
+                    raise ValueError(
+                        f"Cannot alter missing column in {table_name}: {column_name}"
+                    )
+
+        tables_by_name[table_name] = Table(
+            table.name, tuple(columns), tuple(relationships)
+        )
+
+    return tuple(tables_by_name[table.name] for table in tables)
 
 
 def parse_function_arguments(raw_arguments: str) -> tuple[FunctionArgument, ...]:
@@ -392,10 +482,14 @@ def parse_function_arguments(raw_arguments: str) -> tuple[FunctionArgument, ...]
         name = match.group(1)
         definition = match.group(2).strip()
         optional = bool(re.search(r"\bdefault\b", definition, re.IGNORECASE))
+        nullable = bool(re.search(r"\bdefault\s+null\b", definition, re.IGNORECASE))
         raw_type = re.split(
             r"\s+default\s+", definition, maxsplit=1, flags=re.IGNORECASE
         )[0].strip()
-        parsed.append(FunctionArgument(name, normalize_sql_type(raw_type), optional))
+        ts_type = normalize_sql_type(raw_type)
+        if nullable:
+            ts_type = f"{ts_type} | null"
+        parsed.append(FunctionArgument(name, ts_type, optional))
     return tuple(parsed)
 
 
@@ -422,16 +516,17 @@ def parse_functions(sql: str) -> tuple[Function, ...]:
                 return_type=normalize_sql_type(returns_match.group(1)),
             )
         )
-    duplicate_names = {
-        fn.name
-        for fn in functions
-        if sum(other.name == fn.name for other in functions) > 1
-    }
-    if duplicate_names:
-        raise ValueError(
-            f"Overloaded public functions are unsupported: {sorted(duplicate_names)}"
-        )
-    return tuple(functions)
+    latest_by_name: dict[str, Function] = {}
+    for function in functions:
+        previous = latest_by_name.get(function.name)
+        if previous is not None and tuple(
+            argument.ts_type for argument in previous.arguments
+        ) != tuple(argument.ts_type for argument in function.arguments):
+            raise ValueError(
+                f"Overloaded public functions are unsupported: {function.name}"
+            )
+        latest_by_name[function.name] = function
+    return tuple(latest_by_name.values())
 
 
 def quote_ts_type(column: Column) -> str:
