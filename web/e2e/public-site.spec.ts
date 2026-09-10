@@ -13,6 +13,9 @@ test("home, detail, and search use the same immutable release", async ({
   ).toBeVisible();
   await expect(page.getByText(releaseId)).toBeVisible();
   await expect(page.getByText("Policy Engine", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("公开预览 · 当前使用固定测试资料，不代表实时骗局信息"),
+  ).toBeVisible();
 
   const metadata = await request.get("/release.json");
   expect(metadata.ok()).toBeTruthy();

@@ -1,0 +1,93 @@
+name: Cloudflare Pages fixture preview
+
+run-name: Fixture preview from ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_fixture_preview:
+        description: "Publish the tested fixture artifact to the public preview URL"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: scam-radar-cloudflare-preview
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    if: github.ref == 'refs/heads/main' && inputs.confirm_fixture_preview
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: cloudflare-preview
+      url: https://preview.insparian-scam-radar.pages.dev
+    env:
+      SCAM_RADAR_ENV: preview
+      SCAM_RADAR_COLLECT_ENABLED: "false"
+      SCAM_RADAR_AI_ENABLED: "false"
+      SCAM_RADAR_DEPLOY_ENABLED: "true"
+      NEXT_PUBLIC_RELEASE_ID: fixture-2026-08-16-001
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use Node 24
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+          package-manager-cache: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Confirm Offline CI passed for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          result="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" --workflow ci.yml --json conclusion,status --jq 'any(.[]; .status == "completed" and .conclusion == "success")')"
+          test "$result" = "true" || {
+            echo "Offline CI has not passed for this exact commit."
+            exit 1
+          }
+      - name: Install locked build dependencies
+        run: |
+          python -m pip install uv==0.12.5
+          uv sync --project worker --locked --extra dev
+          npm ci --prefix web
+          cd web
+          npx playwright install --with-deps chromium
+      - name: Rebuild and validate the fixture artifact
+        run: |
+          make check
+          make test
+          make eval
+          make demo
+      - name: Upload only the validated static artifact
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          npx --yes wrangler@4.130.0 pages deploy web/out \
+            --project-name=insparian-scam-radar \
+            --branch=preview \
+            --commit-hash="$GITHUB_SHA" \
+            --commit-dirty=false
+      - name: Verify the public preview release
+        env:
+          SCAM_RADAR_ALLOW_PRODUCTION_SMOKE: "true"
+        run: |
+          python scripts/production_smoke.py \
+            --base-url=https://preview.insparian-scam-radar.pages.dev \
+            --release-id="$NEXT_PUBLIC_RELEASE_ID"

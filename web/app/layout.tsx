@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SiteHeader } from "@/components/site-header";
+import { getRelease } from "@/lib/public-data/load";
 
 import "./globals.css";
 
@@ -41,12 +42,19 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const isFixturePreview = getRelease().release_id.startsWith("fixture-");
+
   return (
     <html lang="zh-CN">
       <body>
         <a className="skip-link" href="#main-content">
           跳到主要内容
         </a>
+        {isFixturePreview && (
+          <div className="fixture-preview-banner" role="note">
+            公开预览 · 当前使用固定测试资料，不代表实时骗局信息
+          </div>
+        )}
         <SiteHeader />
         {children}
       </body>

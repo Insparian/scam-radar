@@ -75,6 +75,17 @@ a {
   top: 12px;
 }
 
+.fixture-preview-banner {
+  background: #fff1cc;
+  border-bottom: 1px solid #e3c56f;
+  color: #43350d;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.55rem 1rem;
+  text-align: center;
+}
+
 .shell {
   width: min(calc(100% - 40px), var(--shell));
   margin-inline: auto;

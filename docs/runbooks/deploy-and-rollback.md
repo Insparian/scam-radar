@@ -2,7 +2,7 @@
 
 ## Current status
 
-Only local static builds and fixture smoke checks are approved now. No Cloudflare project, preview, production deployment, custom domain, or rollback has been verified by this repository.
+A fixture-only Cloudflare preview is approved behind the manual `Cloudflare Pages fixture preview` workflow. The preview must display its test-data warning and send `X-Robots-Tag: noindex, nofollow`. Production deployment, custom domain, and rollback remain unverified and require launch approval.
 
 ## Offline release rehearsal
 
@@ -26,6 +26,8 @@ Reject the release if a shadow policy decision is presented as live authority, a
 Direct Upload and Git integration are different project types; do not enable Cloudflare Git auto-deploy. Never guess a DNS target or alter the apex site.
 
 Cloudflare Pages Free is selected because this site is purely static: current documented limits allow 500 builds per month and static asset requests are free. Recheck these terms immediately before activation, set usage notifications where available, and do not enable an automatic paid fallback. Repository ownership may be personal or organizational; the deployment workflow, not a Git-host integration, remains the only publication authority.
+
+The fixture preview uses Direct Upload, so the build runs in GitHub Actions rather than Cloudflare's Pages build service. It uses one of the account's current 100 Pages project slots. With no Pages Functions, its static requests do not count against the account's Workers request allowance. The Pages Write token is still account-scoped and can affect other Pages projects in that account, so it must have no Workers, DNS, R2, billing, or membership permissions and must remain scoped to the `cloudflare-preview` GitHub environment.
 
 ## Rollback
 

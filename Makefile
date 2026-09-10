@@ -5,7 +5,7 @@ UV ?= uv
 RELEASE_ID := fixture-2026-08-16-001
 FIXTURE_RELEASE := ../work/release/$(RELEASE_ID)/public-release.json
 
-.PHONY: bootstrap check test database-test eval demo web collect-dry-run open-source-audit
+.PHONY: bootstrap check test database-test eval demo web collect-dry-run open-source-audit pages-artifact-check
 
 bootstrap:
 	@command -v $(UV) >/dev/null 2>&1 || { echo "uv is required: https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
@@ -39,6 +39,10 @@ demo:
 	$(PYTHON) scripts/run_fixture_demo.py
 	cd web && SCAM_RADAR_RELEASE_PATH=$(FIXTURE_RELEASE) NEXT_PUBLIC_RELEASE_ID=$(RELEASE_ID) npm run build
 	$(PYTHON) scripts/check_secrets.py --export web/out
+	$(MAKE) pages-artifact-check
+
+pages-artifact-check:
+	$(PYTHON) scripts/check_pages_artifact.py --root web/out --release-id $(RELEASE_ID)
 
 web:
 	cd web && npm run dev

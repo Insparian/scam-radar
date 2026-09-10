@@ -184,7 +184,7 @@ All database timestamps are UTC. Only the UI localizes them. Logs use IDs, hashe
 
 ## Activation checklist for data movement
 
-Before enabling F1–F7 or F9, Rui must review the exact first five URLs and collection policies, Supabase region/data-location implications, bounded Google payload, free-tier caps, required secrets, reviewer identity, Cloudflare account/token scope, encrypted-backup recipient/recovery custody, retention and restore rehearsal, and domain change. Approval must be explicit; provisioning alone does not enable collection, AI, backup, deploy, DNS, or live policy authorization. Turning on `apply_live_policy_publication` is a separate decision after shadow-mode performance is measured for a narrowly defined class.
+Each external flow is activated independently. Before enabling any flow, Rui must review that flow's exact destination, outbound data, purpose, caps, credentials, stop control, and user impact. F1 requires the exact first five URLs and collection policies; F3 requires the Supabase region, reviewer identity, and data-location implications; F4 requires the bounded Google payload and call/character caps; F6–F7 require the Cloudflare account/token scope, artifact boundary, quota check, and resolved public access; F9 requires encrypted-backup recipient/recovery custody, retention, and a restore rehearsal; F8 requires the exact domain change. Approval must be explicit, and approval for one flow grants no authority to another. Provisioning alone does not enable collection, AI, backup, deploy, DNS, or live policy authorization. Turning on `apply_live_policy_publication` is a separate decision after shadow-mode performance is measured for a narrowly defined class.
 
 ## Official platform references rechecked
 

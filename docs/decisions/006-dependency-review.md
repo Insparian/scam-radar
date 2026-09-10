@@ -66,7 +66,7 @@ The Python Supabase client is intentionally not selected. The worker already nee
 | `ruff` | latest stable `0.x`, exact lock | Python formatting and linting in one tool | Actively maintained by Astral | Black + isort + Flake8 | Dev/CI only; replaces several heavier tools |
 | `mypy` | stable 2.x | Static checking of pipeline boundaries | Mature, active project | Pyright or runtime checks only | Dev/CI only |
 | Supabase CLI | `2.115.0` in offline CI and local database verification | Start the disposable local Supabase stack, apply migrations from zero, and exercise the real PostgreSQL security contract | Vendor-maintained official CLI | Hand-managed PostgreSQL/PostgREST/Auth containers | Developer/CI tool only; requires a Docker-compatible engine and never links to production |
-| Wrangler | stable 4.x activation candidate; not installed | Upload one prebuilt `web/out` artifact after activation | Cloudflare-maintained official CLI | Pages REST API calls by hand | No Cloudflare upload step or credential reference exists before activation |
+| Wrangler | `4.130.0`, pinned in the manual preview workflow and fetched only there | Upload one prebuilt `web/out` artifact after activation | Cloudflare-maintained official CLI; version rechecked against npm on 2026-09-10 | Pages REST API calls by hand | CI-only download; no browser runtime weight and no Cloudflare credential reaches build or test steps |
 
 ## Explicitly deferred
 
@@ -82,7 +82,7 @@ The Python Supabase client is intentionally not selected. The worker already nee
 Installing the current packages may contact the official npm/PyPI and Playwright registries during approved bootstrap. Application and test behavior remains offline apart from localhost. The packages that would enable later application data paths are deliberately absent from the offline lockfiles:
 
 - Live `httpx` transport, `google-genai`, and `@supabase/supabase-js` are activation-only additions.
-- Wrangler is not present and the deploy workflow fails closed without reading a Cloudflare credential.
+- Wrangler is not a web dependency. The manual preview workflow invokes exactly `4.130.0` only after the artifact passes checks and fails closed if the environment-scoped Cloudflare credentials are absent.
 - Current collector transports are injected fixtures; browser tests contact localhost only.
 
 No selected package adds telemetry. Lockfiles, offline network-denial tests, bundle secret scans, and dependency review on upgrades are required controls.

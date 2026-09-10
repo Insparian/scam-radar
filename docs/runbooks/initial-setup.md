@@ -56,9 +56,11 @@ disposable directory under `/private/tmp`, start the stack there, and set
 `SUPABASE_DB_CONTAINER` to that stack's database container name. Do not grant broad
 filesystem access merely to run this check.
 
-## External activation — requires separate Rui approval
+## External activation — each path requires separate Rui approval
 
-Before creating or linking any cloud resource, show Rui:
+Before creating, linking, or enabling a cloud resource, show Rui that resource's exact outbound data, destination, purpose, caps, credentials, stop control, and user impact. Approving one path does not approve another.
+
+Before complete live-system activation, also show Rui:
 
 - exact outbound flows from `docs/data-flow.md`;
 - first five exact source URLs and their terms/robots/policy review;

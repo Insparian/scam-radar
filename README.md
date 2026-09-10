@@ -102,4 +102,4 @@ make web
 
 软件和项目原创文档默认使用 [Apache License 2.0](LICENSE)。品牌、第三方来源材料、生产数据库、未发布候选、审核记录和备份不在该授权范围内；详见 [NOTICE](NOTICE) 和 [公开/私有边界](docs/open-source-boundary.md)。参与前请阅读 [贡献指南](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md) 和 [安全报告方式](SECURITY.md)。
 
-External activation 需要再次向 Rui 展示所有 outbound data flows、首批五个 exact source URLs、配额、Supabase region、所需 secrets、Cloudflare token 的账户级权限范围，以及加密备份的恢复密钥保管与保留规则，并获得明确批准。
+External paths are activated independently. Before enabling one, show Rui that path's exact destination, outbound data, purpose, limits, credentials, and stop control. Before live collection and the complete production launch, this expands to the first five exact source URLs, Supabase region, bounded Gemini payload, all required secrets, Cloudflare account-level token scope, and encrypted-backup recovery-key custody and retention.
