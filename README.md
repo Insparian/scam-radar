@@ -2,6 +2,8 @@
 
 骗局雷达把经过选择的可信公开报道压缩成少量、可验证、可追溯的 **Scam Patterns**。它不是诈骗新闻站，也不会让 AI 判断某个人、公司或产品“就是诈骗”。确定性 Policy Engine 处理可证明安全的常规类别，只有例外才交给人决定。
 
+[North Star](docs/North%20Star.md) 是本项目最高层级的产品方向；功能、自动化和基础设施决策都不得以牺牲证据、信任或用户避免伤害的结果为代价。
+
 ## 当前状态
 
 仓库目前是一个采用 Apache-2.0 的 **offline-first V0.1** 公益项目：默认只使用 fixtures、recorded AI responses 和本地文件/数据库测试。公开代码不包含生产数据；完整边界见 [open-source boundary](docs/open-source-boundary.md)。所有真实来源都在 `config/sources.yaml` 中保持 `enabled: false`，以下功能尚未获准启用，也不能视为已完成线上验证：
