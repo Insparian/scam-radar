@@ -65,7 +65,7 @@ The Python Supabase client is intentionally not selected. The worker already nee
 | `pytest`, `pytest-cov` | stable 9.x / 7.x | Worker unit/integration tests and coverage | Mature, actively maintained Python tooling | `unittest` + `coverage` | Dev/CI only |
 | `ruff` | latest stable `0.x`, exact lock | Python formatting and linting in one tool | Actively maintained by Astral | Black + isort + Flake8 | Dev/CI only; replaces several heavier tools |
 | `mypy` | stable 2.x | Static checking of pipeline boundaries | Mature, active project | Pyright or runtime checks only | Dev/CI only |
-| Supabase CLI | `2.101.0` in offline CI | Start the disposable local Supabase stack and apply migrations from zero | Vendor-maintained official CLI | Hand-managed PostgreSQL/PostgREST/Auth containers | CI only for now; requires Docker and never links to production |
+| Supabase CLI | `2.115.0` in offline CI and local database verification | Start the disposable local Supabase stack, apply migrations from zero, and exercise the real PostgreSQL security contract | Vendor-maintained official CLI | Hand-managed PostgreSQL/PostgREST/Auth containers | Developer/CI tool only; requires a Docker-compatible engine and never links to production |
 | Wrangler | stable 4.x activation candidate; not installed | Upload one prebuilt `web/out` artifact after activation | Cloudflare-maintained official CLI | Pages REST API calls by hand | No Cloudflare upload step or credential reference exists before activation |
 
 ## Explicitly deferred

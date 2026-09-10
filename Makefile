@@ -5,7 +5,7 @@ UV ?= uv
 RELEASE_ID := fixture-2026-08-16-001
 FIXTURE_RELEASE := ../work/release/$(RELEASE_ID)/public-release.json
 
-.PHONY: bootstrap check test eval demo web collect-dry-run
+.PHONY: bootstrap check test database-test eval demo web collect-dry-run
 
 bootstrap:
 	@command -v $(UV) >/dev/null 2>&1 || { echo "uv is required: https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
@@ -27,6 +27,9 @@ test:
 	$(PYTHON) -m pytest worker/tests supabase/tests
 	cd web && npm run test:e2e
 	$(PYTHON) scripts/check_secrets.py --export web/out
+
+database-test:
+	./scripts/run_local_database_tests.sh
 
 eval:
 	$(PYTHON) evals/run_recorded_eval.py

@@ -24,6 +24,37 @@ Get a fresh checkout to a verified offline fixture state. This runbook does **no
 
 Package installation may reach approved official registries. Application tests must use fixtures/localhost only.
 
+## Real local database contract — optional
+
+This check uses disposable local containers and synthetic `.invalid` data only. It does
+not connect to a Supabase account or production project.
+
+1. Start a Docker-compatible engine. On macOS, the reviewed default is Rancher Desktop
+   with Moby selected and Kubernetes, telemetry, and automatic updates disabled.
+2. Start the local stack from the repository root:
+
+   ```bash
+   npx --yes supabase@2.115.0 start
+   ```
+
+3. Exercise the real PostgreSQL grants, policy routes, Publish Gate, timestamps,
+   and immutable release controls:
+
+   ```bash
+   make database-test
+   ```
+
+4. Stop and discard the synthetic database:
+
+   ```bash
+   npx --yes supabase@2.115.0 stop --no-backup
+   ```
+
+If macOS blocks container mounts under `Documents`, copy only `supabase/` to a
+disposable directory under `/private/tmp`, start the stack there, and set
+`SUPABASE_DB_CONTAINER` to that stack's database container name. Do not grant broad
+filesystem access merely to run this check.
+
 ## External activation — requires separate Rui approval
 
 Before creating or linking any cloud resource, show Rui:

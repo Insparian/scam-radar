@@ -79,12 +79,14 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - name: Rebuild local Supabase from zero
-        run: npx --yes supabase@2.101.0 start
+        run: npx --yes supabase@2.115.0 start
       - name: Lint the live local database
-        run: npx --yes supabase@2.101.0 db lint --local --level warning
+        run: npx --yes supabase@2.115.0 db lint --local --level warning
+      - name: Exercise policy and publication boundaries
+        run: make database-test
       - name: Stop local Supabase
         if: always()
-        run: npx --yes supabase@2.101.0 stop --no-backup
+        run: npx --yes supabase@2.115.0 stop --no-backup
       - name: Record database scope
         if: always()
         run: |
