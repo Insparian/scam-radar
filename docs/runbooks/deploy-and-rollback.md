@@ -25,6 +25,8 @@ Reject the release if a shadow policy decision is presented as live authority, a
 
 Direct Upload and Git integration are different project types; do not enable Cloudflare Git auto-deploy. Never guess a DNS target or alter the apex site.
 
+Cloudflare Pages Free is selected because this site is purely static: current documented limits allow 500 builds per month and static asset requests are free. Recheck these terms immediately before activation, set usage notifications where available, and do not enable an automatic paid fallback. Repository ownership may be personal or organizational; the deployment workflow, not a Git-host integration, remains the only publication authority.
+
 ## Rollback
 
 - **Static site:** redeploy the last tested artifact and verify its embedded release/artifact hashes. Do not rebuild “equivalent” mutable data and do not force-push Git.

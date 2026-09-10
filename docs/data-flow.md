@@ -19,6 +19,7 @@ flowchart TB
     subgraph E["External processors — after activation"]
       G["Gemini"]
       C["Cloudflare Pages"]
+      O["Private R2 backup bucket"]
     end
     subgraph D["Private data plane"]
       DB["Supabase + Auth + policy/human RPCs"]
@@ -33,6 +34,7 @@ flowchart TB
     PE -->|"policy decision + provenance"| DB
     R <-->|"PKCE JWT + narrow actions"| DB
     DB -->|"one release_id"| X --> B -->|"static assets only"| C
+    DB -.->|"transient logical export"| K["Encrypt on trusted runner"] -.->|"ciphertext only"| O
     C -->|"HTML/assets/local index"| V
 ```
 
@@ -51,6 +53,7 @@ Source text is data, never instructions. External content cannot change prompt, 
 | F6 | Runner → Cloudflare Pages | Hashed compiled static directory | Preview/production publication | Disabled until launch approval | Deploy switch, Pages-only token permission, same-artifact smoke, no backend secret |
 | F7 | Public browser → Cloudflare | Page/asset/search-index paths and ordinary network metadata | Serve public database | Not deployed | One immutable release; no analytics/telemetry |
 | F8 | Public browser local memory/CPU | User's search string and downloaded index | Exact/alias/keyword search | Fixture site only | Query never transmitted, logged, or retained by application |
+| F9 | Supabase → trusted runner → private Cloudflare R2 | Transient private logical dump, then encrypted ciphertext plus integrity metadata | Off-site recovery for Supabase Free | Disabled until activation | Read-only export credential; encrypt before upload; offline recovery identity; private bucket; no GitHub artifact; restore rehearsal |
 
 There is no source → browser path. Public copy is an original verified Scam Radar revision, not stored source HTML or an AI response.
 
@@ -162,6 +165,7 @@ Evidence may be rechecked after a revision decision, so evidence freshness is no
 | Private source/evidence | Bounded relevant clean text, source metadata, spans, claim mappings | Supabase only | Preserve for traceability/recheck; never put in public artifact |
 | Private decision | Drafts, notes, queue payloads, admin identities, policy decisions, human audit events | Supabase only | Policy/human audit append-only; corrections add events/revisions |
 | Restricted credentials | Supabase secret, Gemini key, Cloudflare token, DB password | Local ignored env or scoped GitHub secret | Never committed/logged; rotate on suspected exposure |
+| Encrypted recovery | Encrypted logical database exports and minimal integrity manifests | Private R2 bucket after activation | Retention/lifecycle policy must be approved at activation; never publicly accessible |
 | Transient untrusted | Raw HTML/bytes and arbitrary response headers | Runner memory/temporary file only | Delete immediately after bounded normalization; never upload as artifact |
 | Disposable build/test | Fixture run output and release staging | Namespaced `work/` | Re-creatable and ignored; safe cleanup only within the namespace |
 | Prohibited | Victim PII, raw production dumps, malicious binaries, analytics identifiers | Nowhere | Do not collect or retain |
@@ -180,7 +184,7 @@ All database timestamps are UTC. Only the UI localizes them. Logs use IDs, hashe
 
 ## Activation checklist for data movement
 
-Before enabling F1–F7, Rui must review the exact first five URLs and collection policies, Supabase region/data-location implications, bounded Google payload, free-tier caps, required secrets, reviewer identity, Cloudflare account/token scope, and domain change. Approval must be explicit; provisioning alone does not enable collection, AI, deploy, DNS, or live policy authorization. Turning on `apply_live_policy_publication` is a separate decision after shadow-mode performance is measured for a narrowly defined class.
+Before enabling F1–F7 or F9, Rui must review the exact first five URLs and collection policies, Supabase region/data-location implications, bounded Google payload, free-tier caps, required secrets, reviewer identity, Cloudflare account/token scope, encrypted-backup recipient/recovery custody, retention and restore rehearsal, and domain change. Approval must be explicit; provisioning alone does not enable collection, AI, backup, deploy, DNS, or live policy authorization. Turning on `apply_live_policy_publication` is a separate decision after shadow-mode performance is measured for a narrowly defined class.
 
 ## Official platform references rechecked
 

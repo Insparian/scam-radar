@@ -2,7 +2,7 @@
 
 ## Implementation Brief — Scam Intelligence Engine & Public Database
 
-**Status:** Implementation baseline amended 2026-08-16; external activation still requires Rui approval
+**Status:** Implementation baseline amended 2026-09-10; external activation still requires Rui approval
 **Owner:** Insparian  
 **Primary market:** 中国大陆  
 **Primary users:** 中老年人，以及替父母查询、核实和转发信息的成年子女  
@@ -52,6 +52,12 @@ Time semantics are locked:
 Evidence can be rechecked after a revision decision. Therefore `pattern_evidence.last_verified_at` and `pattern_revisions.verified_at` are independently meaningful and have no required order relative to each other; both must be present and no later than the release manifest freeze.
 
 Both policy and human paths use the same Evidence/Publish Gate, immutable revision, publication-change, exact-release, audit, rollback, and same-`release_id` boundaries. Policy decisions and human events retain distinct provenance; automation never impersonates a reviewer.
+
+## Governing 2026-09-10 sustainability and open-source amendment
+
+V0.1 uses a public Apache-2.0 software repository, GitHub Actions, Supabase Free, Cloudflare Pages Free, Gemini's capped free allowance, and an encrypted private R2 backup path. Production records, unpublished candidates, reviewer material, credentials, raw sources, and backups remain private and are not licensed by opening the code.
+
+The public site remains available from its last immutable static artifact if Supabase pauses. Before production data is accepted, a logical database export must be encrypted on the trusted runner with an `age` public recipient and only ciphertext may be uploaded to a private R2 bucket. The recovery identity stays offline and a restore rehearsal, retention decision, and hard cost boundary are activation gates. See [ADR-008](docs/decisions/008-free-tier-continuity-and-encrypted-backups.md) and [open-source boundary](docs/open-source-boundary.md).
 
 ---
 
@@ -169,6 +175,7 @@ These are product constraints, not suggestions.
 | Initial source count | Enable 5 stable collectors first; grow to 15–25, then at most 30–50 after validation | Prevents parser noise from hiding core product failures. |
 | Schedule | Three batch runs per day | The job is periodic, not a real-time service. |
 | Hosting | GitHub Free + GitHub Actions + Supabase Free + Cloudflare Pages Free + Gemini free tier | Validates value before paying for infrastructure. |
+| Repository | Public software under Apache-2.0; operational data remains private | Makes evidence and policy methods inspectable without publishing allegations or reviewer data. |
 | Server | No VPS and no always-on backend | Removes server maintenance and idle cost. |
 | Database | Supabase PostgreSQL | Supports JSONB, relational evidence, auditability, search, and future vector work. |
 | Frontend | Next.js static export on Cloudflare Pages | Preserves the agreed stack without introducing an SSR runtime. |
@@ -179,6 +186,7 @@ These are product constraints, not suggestions.
 | Publication | Deterministic Policy Engine; human by exception; `safe_to_automate` shadow-only in V0.1 | Compresses human attention without letting AI or unsupported certainty gain authority. |
 | Search | Exact, alias, and keyword matching first | Safer than an AI chatbot making a binary fraud judgment. |
 | Raw content | Do not permanently store full HTML | Protects the free database quota and reduces copyright/security risk. |
+| Recovery | Encrypt logical exports before private R2 upload; recovery key stays offline | Closes the Supabase Free backup gap without putting decryption authority in routine CI. |
 | Distribution | Social video generation and publishing are outside V0.1 | Build the intelligence engine before the loudspeaker. |
 
 Two rules must remain separate everywhere in code and UI:
@@ -294,6 +302,7 @@ No component runs continuously. GitHub Actions runners start, work, persist stat
 | Supabase Free | PostgreSQL system of record, Auth, RLS, policy/human RPCs, immutable decision provenance, trusted release export | Crawl sites or expose privileged keys to browsers |
 | Gemini free tier | Relevance, extraction, pattern comparison; optional embedding interface | Establish truth, set final Heat, determine policy eligibility, verify, or publish |
 | Cloudflare Pages Free | Serve the static public and admin frontend | Hold the Supabase secret key or Gemini key in browser assets |
+| Private Cloudflare R2 bucket | Hold encrypted logical backups after activation | Receive raw dumps, public traffic, or deployment credentials |
 | `scamradar.insparian.com` | Canonical public URL | Change the `insparian.com` apex site |
 
 ### 4.3 Frontend deployment decision
@@ -353,7 +362,7 @@ Only these external accounts are needed:
 - Cloudflare;
 - Google AI Studio / Gemini API.
 
-No VPS, Railway, Redis, queue service, object storage, or additional hosting account is required.
+R2 uses the same Cloudflare account; it does not add another provider account. No VPS, Railway, Redis, queue service, or additional hosting account is required.
 
 ---
 
@@ -369,6 +378,7 @@ These flows must be shown to Rui again before the first live run:
 | Human exception browser | Supabase | Auth session, exception decisions, and V0.1 shadow confirmations | Verify exception records without exposing private data |
 | GitHub Actions runner | Cloudflare Pages | Compiled static web assets | Deploy website |
 | Public browser | Cloudflare | Page, asset, and immutable static search-index requests | Serve and search one public release |
+| Supabase → trusted GitHub Actions runner → private Cloudflare R2 | Transient logical dump, then encrypted ciphertext and integrity metadata | Off-site disaster recovery for Supabase Free |
 
 Rules:
 
@@ -377,6 +387,7 @@ Rules:
 - Public search runs locally against the deployed release index; do not transmit or retain search text.
 - Do not add analytics, error telemetry, or another network SDK without separate approval.
 - Logs contain counts, IDs, versions, and reason codes, not full article bodies or personal data.
+- A raw database dump never becomes a GitHub artifact or leaves the trusted runner before encryption; the `age` recovery identity never enters GitHub.
 
 ---
 
@@ -1650,6 +1661,8 @@ The site must say, in plain Chinese:
 SUPABASE_SECRET_KEY
 GEMINI_API_KEY
 CLOUDFLARE_API_TOKEN
+CLOUDFLARE_R2_ACCESS_KEY_ID       # backup upload only
+CLOUDFLARE_R2_SECRET_ACCESS_KEY   # backup upload only
 SUPABASE_ACCESS_TOKEN             # migration workflow only, if required
 SUPABASE_DB_PASSWORD              # migration workflow only, if required
 ```
@@ -1665,6 +1678,7 @@ SUPABASE_URL
 SCAM_RADAR_COLLECT_ENABLED=false
 SCAM_RADAR_AI_ENABLED=false
 SCAM_RADAR_DEPLOY_ENABLED=false
+SCAM_RADAR_BACKUP_ENABLED=false
 SCAM_RADAR_MAX_ITEMS_PER_RUN=250
 SCAM_RADAR_MAX_ITEMS_PER_SOURCE=50
 SCAM_RADAR_MAX_GEMINI_CALLS_PER_RUN=100
@@ -1677,6 +1691,9 @@ SOURCE_REGISTRY_PATH=config/sources.yaml
 LOG_LEVEL=INFO
 CLOUDFLARE_ACCOUNT_ID
 CLOUDFLARE_PAGES_PROJECT=scam-radar
+CLOUDFLARE_R2_ENDPOINT
+CLOUDFLARE_R2_BUCKET=scam-radar-backups
+SCAM_RADAR_BACKUP_AGE_RECIPIENT   # public encryption recipient, not recovery identity
 SUPABASE_PROJECT_REF
 ```
 
@@ -1701,7 +1718,9 @@ A dedicated trusted exporter step may use `SUPABASE_SECRET_KEY` to fetch one exa
 - Local secrets live in ignored `.env.local` files.
 - Production secrets live in GitHub Encrypted Secrets.
 - PRs from forks do not receive secrets.
-- Cloudflare token is scoped only to the Pages project, not a Global API Key.
+- Cloudflare deployment token is limited to the intended account and Pages permission, not a Global API Key; Cloudflare does not document per-Pages-project token scoping.
+- R2 upload credentials are separate from deployment credentials and limited to the private backup bucket wherever the platform supports it.
+- The `age` recovery identity is never a GitHub secret; routine automation has encryption authority only, not decryption authority.
 - Logs do not print environment values, Authorization headers, full model payloads, or source bodies.
 - Suspected leakage triggers: pause workflow → rotate → update secret → smoke test → revoke old key.
 
@@ -2177,11 +2196,12 @@ Turn off collection and/or AI via variables. Existing published pages remain rea
 
 These do not block offline implementation:
 
-- GitHub repository destination and whether it remains private (recommended: private for V0.1);
+- GitHub repository destination; the code repository is public, but production data and the two currently untracked product drafts require separate inclusion review;
 - Supabase project region, chosen after reviewing current options and data-location implications;
 - reviewer email / Supabase Auth bootstrap user;
 - collector contact email used in the User-Agent;
 - scoped Cloudflare Pages token and access to the `insparian.com` DNS provider;
+- private R2 bucket credentials, backup `age` recipient, offline recovery-identity custody, retention, and restore-test approval;
 - Gemini API key with no automatic paid fallback;
 - approval of the first five exact source URLs and their recorded collection policy.
 
@@ -2265,21 +2285,21 @@ Codex should execute in this order.
 ### Task 11 — Complete offline end-to-end validation
 
 - Make `make demo` run the whole fixture loop.
-- Complete CI, RLS/policy tests, web E2E, static secret scan, and Gold Set/shadow report.
+- Complete CI, RLS/policy tests, web E2E, static secret scan, full Git-history/open-source boundary audit, and Gold Set/shadow report.
 - At this point no cloud account or production secret should be required.
 
 ### Task 12 — External activation checkpoint
 
-- Show Rui the exact §5 data flows, first five sources, free-tier caps, Supabase region choice, and secrets required.
-- Obtain confirmation before creating projects, crawling, sending content to Gemini, deploying, or editing DNS.
+- Show Rui the exact §5 data flows, first five sources, free-tier caps, Supabase region choice, backup recovery/retention plan, and secrets required.
+- Obtain confirmation before creating projects, uploading a backup, crawling, sending content to Gemini, deploying, or editing DNS.
 
 ### Task 13 — Provision production with all external actions disabled
 
-- Create/link the approved free Supabase, Cloudflare Pages, and Gemini projects plus GitHub configuration.
+- Create/link the approved free Supabase, Direct Upload Cloudflare Pages, private R2 bucket, and Gemini projects plus GitHub configuration.
 - Apply production migrations and registry seed through the manual workflow.
 - Bootstrap the first Supabase reviewer and configure scoped secrets/variables.
 - Verify production schema/behavior version and anon/reviewer/exporter permission boundaries.
-- Keep collection, AI, and production deploy switches `false`.
+- Keep collection, AI, backup, and production deploy switches `false`.
 - Record project region, IDs, setup actor, and smoke-test result; do not crawl or deploy public content yet.
 
 ### Task 14 — One-source capped live run

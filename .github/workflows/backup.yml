@@ -1,0 +1,32 @@
+name: Database backup (disabled until activation)
+
+on:
+  schedule:
+    - cron: "43 2 * * *"
+      timezone: "UTC"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scam-radar-production-backup
+  cancel-in-progress: false
+
+jobs:
+  activation-guard:
+    if: github.event_name == 'workflow_dispatch' || vars.SCAM_RADAR_BACKUP_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Report the disabled backup boundary
+        if: vars.SCAM_RADAR_BACKUP_ENABLED != 'true'
+        run: |
+          echo "Backup is disabled. No database credential was read and no object was uploaded."
+          echo "### Backup skipped: activation pending" >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail closed if the switch is changed prematurely
+        if: vars.SCAM_RADAR_BACKUP_ENABLED == 'true'
+        run: |
+          echo "The backup switch was enabled before pinned dump, encryption, upload, and restore-verification steps were activated."
+          echo "No Supabase or R2 credential was read."
+          exit 1

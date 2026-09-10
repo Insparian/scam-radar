@@ -5,7 +5,7 @@ UV ?= uv
 RELEASE_ID := fixture-2026-08-16-001
 FIXTURE_RELEASE := ../work/release/$(RELEASE_ID)/public-release.json
 
-.PHONY: bootstrap check test database-test eval demo web collect-dry-run
+.PHONY: bootstrap check test database-test eval demo web collect-dry-run open-source-audit
 
 bootstrap:
 	@command -v $(UV) >/dev/null 2>&1 || { echo "uv is required: https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
@@ -20,7 +20,7 @@ check:
 	cd worker && $(PYTHON) -m mypy
 	$(PYTHON) scripts/generate_database_types.py --check
 	$(PYTHON) scripts/check_workflows_pinned.py
-	$(PYTHON) scripts/check_secrets.py --repo
+	$(MAKE) open-source-audit
 	cd web && npm run check
 
 test:
@@ -45,3 +45,8 @@ web:
 
 collect-dry-run:
 	PYTHONPATH=worker/src $(PYTHON) -m scam_radar.cli collect-dry-run
+
+open-source-audit:
+	$(PYTHON) scripts/check_secrets.py --repo
+	$(PYTHON) scripts/check_secrets.py --history
+	$(PYTHON) scripts/check_public_boundary.py

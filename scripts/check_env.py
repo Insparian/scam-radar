@@ -62,6 +62,16 @@ def require_offline_defaults() -> None:
             f"external sources are enabled before activation: {sorted(set(unsafe))}"
         )
 
+    env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
+    required_disabled_switches = (
+        "SCAM_RADAR_COLLECT_ENABLED=false",
+        "SCAM_RADAR_AI_ENABLED=false",
+        "SCAM_RADAR_DEPLOY_ENABLED=false",
+        "SCAM_RADAR_BACKUP_ENABLED=false",
+    )
+    if any(line not in env_example for line in required_disabled_switches):
+        raise RuntimeError(".env.example no longer fails closed")
+
 
 def main() -> int:
     require_files()

@@ -1,6 +1,6 @@
 # Scam Radar V0.1 architecture
 
-**Status:** Offline implementation architecture, 2026-08-16. External collection, Gemini, production Supabase, Cloudflare deployment, DNS, and telemetry are not activated.
+**Status:** Offline implementation architecture, updated 2026-09-10. External collection, Gemini, production Supabase, encrypted R2 backup, Cloudflare deployment, DNS, and telemetry are not activated.
 
 ## Outcome and non-negotiable invariants
 
@@ -34,12 +34,16 @@ flowchart TD
     PolicyVerify -->|"narrow policy RPC"| DB
     Worker -->|"private records and decision RPC"| DB
     DB -->|"one exact published release; trusted export"| Export["Immutable local JSON artifact"]
+    DB -.->|"after activation: transient dump"| Encrypt["Encrypt on trusted runner"]
+    Encrypt -.->|"ciphertext only"| R2["Private R2 backup bucket"]
     Export --> Build["Next.js static build"]
     Build -->|"after activation: prebuilt assets only"| Pages["Cloudflare Pages"]
     Public["Older adults and families"] -->|"pages + local search index"| Pages
 ```
 
 No component runs continuously. The public path is static and does not require Supabase, Gemini, or the worker at request time.
+
+V0.1 therefore uses Supabase Free rather than paying for database uptime that the public request path does not need. Before accepting production data, a separately activated encrypted off-site backup must close the free plan's managed-backup gap. Cloudflare Pages Free is the intended static host; current quotas are launch checks rather than architectural guarantees.
 
 ## Component responsibilities
 
@@ -144,6 +148,7 @@ Kill switches independently stop collection, AI, and deployment. Disabling work 
 - **Mainland access:** Cloudflare Pages quality is an unresolved empirical risk. Validate multiple mainland mobile paths and WeChat before launch; do not distort the engine architecture in advance.
 - **Cloudflare token scope:** official API token resources permit one-account + Pages permission, not documented per-project restriction. Resolve account isolation at activation; see ADR-005.
 - **Free-tier/model change:** quotas and model IDs are configuration, not entitlement. Exhaustion queues work; it never triggers payment/provider fallback.
+- **Free-tier database recovery:** Supabase Free has no downloadable automatic backups. Production activation requires encrypted off-site logical backups and a tested restore path; see ADR-008.
 - **Static admin constraints:** PKCE callback and all auth states must work as browser-only flows, with clear loading/recovery states.
 - **Two toolchains:** root `make` commands and pinned locks carry this complexity so Rui does not have to.
 - **False accusation:** claim-level evidence, legal-status wording, deterministic policy constraints, authenticated exception decisions, unpublish release, and audit/eval regression are launch blockers, not later polish.
@@ -157,3 +162,4 @@ Kill switches independently stop collection, AI, and deployment. Disabling work 
 - [ADR-005: Cloudflare Pages Direct Upload](decisions/005-cloudflare-pages-direct-upload.md)
 - [ADR-006: Dependency review](decisions/006-dependency-review.md)
 - [ADR-007: Policy Engine with human exception review](decisions/007-policy-engine-human-exception.md)
+- [ADR-008: Free-tier continuity with encrypted off-site backups](decisions/008-free-tier-continuity-and-encrypted-backups.md)

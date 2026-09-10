@@ -4,11 +4,12 @@
 
 ## 当前状态
 
-仓库目前是 **offline-first V0.1**：默认只使用 fixtures、recorded AI responses 和本地文件/数据库测试。所有真实来源都在 `config/sources.yaml` 中保持 `enabled: false`，以下功能尚未获准启用，也不能视为已完成线上验证：
+仓库目前是一个采用 Apache-2.0 的 **offline-first V0.1** 公益项目：默认只使用 fixtures、recorded AI responses 和本地文件/数据库测试。公开代码不包含生产数据；完整边界见 [open-source boundary](docs/open-source-boundary.md)。所有真实来源都在 `config/sources.yaml` 中保持 `enabled: false`，以下功能尚未获准启用，也不能视为已完成线上验证：
 
 - 真实网站采集；
 - Gemini API 调用；
 - production Supabase 连接；
+- 加密 R2 数据库备份；
 - Cloudflare Pages 部署或 DNS 修改；
 - 任何 analytics、telemetry 或用户搜索词上传。
 
@@ -47,6 +48,7 @@ make web
 | `make demo` | 跑完整 fixture 链路并生成可检查的本地结果 |
 | `make web` | 启动 fixture/static web preview |
 | `make collect-dry-run` | 运行不访问真实来源、不写 production 的采集演练 |
+| `make open-source-audit` | 扫描当前文件、完整本地 Git 历史和公开仓库边界，不输出发现的密钥值 |
 
 这些命令是仓库对人的稳定入口。内部工具可以变化，但不要让 Rui 记住多套子目录命令。
 
@@ -94,4 +96,8 @@ make web
 - [Key rotation](docs/runbooks/key-rotation.md)
 - [Database recovery](docs/runbooks/database-recovery.md)
 
-External activation 需要再次向 Rui 展示所有 outbound data flows、首批五个 exact source URLs、配额、Supabase region、所需 secrets 和 Cloudflare token 的账户级权限范围，并获得明确批准。
+## Open source
+
+软件和项目原创文档默认使用 [Apache License 2.0](LICENSE)。品牌、第三方来源材料、生产数据库、未发布候选、审核记录和备份不在该授权范围内；详见 [NOTICE](NOTICE) 和 [公开/私有边界](docs/open-source-boundary.md)。参与前请阅读 [贡献指南](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md) 和 [安全报告方式](SECURITY.md)。
+
+External activation 需要再次向 Rui 展示所有 outbound data flows、首批五个 exact source URLs、配额、Supabase region、所需 secrets、Cloudflare token 的账户级权限范围，以及加密备份的恢复密钥保管与保留规则，并获得明确批准。
