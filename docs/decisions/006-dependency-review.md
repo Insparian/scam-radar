@@ -30,7 +30,7 @@ Implementation note after Task 11: the offline lockfiles intentionally contain o
 
 | Dependency | Version target | Purpose | Maintenance signal | Lighter alternative | User/runtime impact |
 |---|---:|---|---|---|---|
-| `next` | `16.3.1` | App Router, build-time rendering, routing, metadata, and static export | Current stable npm release; Vercel-maintained with registry provenance | Vite + a hand-built static router/exporter | Adds framework build weight, but emits portable static files and avoids a user-facing server |
+| `next` | `16.3.3` | App Router, build-time rendering, routing, metadata, and static export | Vercel-maintained; patched within the 16.3 line on 2026-09-11 to resolve published security advisories | Vite + a hand-built static router/exporter | Adds framework build weight, but emits portable static files and avoids a user-facing server |
 | `react`, `react-dom` | `19.2.8` | Accessible component UI and client-only reviewer interactions | Current matching stable npm releases; Meta-maintained | Plain HTML/DOM | Small browser runtime cost on interactive pages; public pages should remain mostly server-rendered HTML |
 | `@supabase/supabase-js` | `2.112.3` activation candidate; not in the offline lock | Reviewer PKCE Auth and calls to narrow review RPCs after activation | Current stable vendor SDK release; Supabase-maintained | Handwritten `fetch` for Auth/PostgREST | When approved, load only in admin chunks; public content/search must not call Supabase |
 
@@ -58,7 +58,7 @@ The Python Supabase client is intentionally not selected. The worker already nee
 | `typescript` | `5.9.3` initially | Strict web type checking | Microsoft-maintained stable 5.x line | JavaScript + JSDoc | Build-only. We deliberately do not adopt TypeScript 7 on day one; ecosystem compatibility matters more than newest-major features |
 | `eslint`, `eslint-config-next` | latest versions compatible with Next 16.3, then exact lock | Next/React correctness linting | Core ecosystem/vendor-maintained | TypeScript compiler alone | Build-only; catches unsafe browser/server boundary mistakes |
 | `prettier` | stable 3.x | Deterministic formatting | Mature and actively maintained | Manual formatting | Build-only; reduces review noise |
-| `vitest` | stable 4.x | Fast deterministic library and release-contract tests | Active Vite ecosystem | Node test runner | Dev/CI only; the current tests do not need a simulated DOM |
+| `vitest` | `4.1.11` | Fast deterministic library and release-contract tests | Active Vite ecosystem; patched on 2026-09-11 for the mocker path-traversal advisory | Node test runner | Dev/CI only; the current tests do not need a simulated DOM |
 | `jsdom`, `@testing-library/*` | deferred until a component interaction requires them | Browser-like component testing | Established projects | Pure-function tests plus Playwright | Avoids unused test weight; Playwright currently covers user-visible interactions |
 | `@playwright/test` | `1.62.1` initially | Real-browser public/admin flows and static-output checks | Current Microsoft-maintained stable npm release | Manual browser checks | Downloads test browsers in bootstrap/CI; never ships to users |
 | `@axe-core/playwright` | stable 4.x | Automated high-signal accessibility checks | Deque-maintained integration around axe-core | Only manual WCAG review | Dev/CI only; complements, not replaces, keyboard/manual testing |
@@ -86,6 +86,10 @@ Installing the current packages may contact the official npm/PyPI and Playwright
 - Current collector transports are injected fixtures; browser tests contact localhost only.
 
 No selected package adds telemetry. Lockfiles, offline network-denial tests, bundle secret scans, and dependency review on upgrades are required controls.
+
+The 2026-09-11 security maintenance update also advances the locked transitive
+`sharp` and `js-yaml` packages to their first patched versions without adding a
+new dependency or runtime service.
 
 ## Sources checked
 
