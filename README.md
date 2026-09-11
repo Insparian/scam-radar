@@ -6,13 +6,13 @@
 
 ## 当前状态
 
-仓库目前是一个采用 Apache-2.0 的 **offline-first V0.1** 公益项目：默认只使用 fixtures、recorded AI responses 和本地文件/数据库测试。公开代码不包含生产数据；完整边界见 [open-source boundary](docs/open-source-boundary.md)。所有真实来源都在 `config/sources.yaml` 中保持 `enabled: false`，以下功能尚未获准启用，也不能视为已完成线上验证：
+仓库目前是一个采用 Apache-2.0 的 **offline-first V0.1** 公益项目：默认只使用 fixtures、recorded AI responses 和本地文件/数据库测试。公开代码不包含生产数据；完整边界见 [open-source boundary](docs/open-source-boundary.md)。公开的 [fixture preview](https://preview.insparian-scam-radar.pages.dev/) 只演示测试数据，并非实时诈骗数据库。所有真实来源都在 `config/sources.yaml` 中保持 `enabled: false`，以下功能尚未获准启用，也不能视为已完成线上验证：
 
 - 真实网站采集；
 - Gemini API 调用；
 - production Supabase 连接；
 - 加密 R2 数据库备份；
-- Cloudflare Pages 部署或 DNS 修改；
+- 真实数据的 production Pages 发布或 DNS 修改；
 - 任何 analytics、telemetry 或用户搜索词上传。
 
 离线构建的目标是先证明核心链路：来源条目 → 去重 → AI proposal → Evidence Gate → Scam Heat → Policy Engine → safe/review/blocked 分流 → 不可变修订与同一 `release_id` 的静态页面和本地搜索。

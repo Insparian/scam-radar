@@ -2,7 +2,7 @@
 
 ## Current status
 
-A fixture-only Cloudflare preview is approved behind the manual `Cloudflare Pages fixture preview` workflow. The preview must display its test-data warning and send `X-Robots-Tag: noindex, nofollow`. Production deployment, custom domain, and rollback remain unverified and require launch approval.
+A fixture-only Cloudflare preview is active at <https://preview.insparian-scam-radar.pages.dev/> behind the manual `Cloudflare Pages fixture preview` workflow. It displays its test-data warning and sends `X-Robots-Tag: noindex, nofollow`. Production deployment, custom domain, and rollback remain unverified and require launch approval. The post-upload smoke check retries only transient reachability failures during the short Pages alias propagation window; release-ID mismatch still fails immediately.
 
 ## Offline release rehearsal
 

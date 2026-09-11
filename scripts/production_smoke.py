@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import urljoin, urlparse
@@ -17,6 +19,30 @@ def get_json(url: str) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise TypeError("release metadata was not a JSON object")
     return payload
+
+
+def get_json_with_retry(
+    url: str, *, attempts: int = 6, initial_delay_seconds: float = 2.0
+) -> dict[str, object]:
+    """Allow the Pages alias a short propagation window after deployment."""
+    if attempts < 1:
+        raise ValueError("smoke check attempts must be positive")
+    delay_seconds = initial_delay_seconds
+    for attempt in range(1, attempts + 1):
+        try:
+            return get_json(url)
+        except (urllib.error.URLError, TimeoutError) as error:
+            if attempt == attempts:
+                raise RuntimeError(
+                    "production release metadata could not be reached"
+                ) from error
+            print(
+                f"production smoke retry {attempt}/{attempts - 1} after transient error",
+                file=sys.stderr,
+            )
+            time.sleep(delay_seconds)
+            delay_seconds = min(delay_seconds * 2, 30)
+    raise AssertionError("unreachable")
 
 
 def main() -> int:
@@ -34,12 +60,9 @@ def main() -> int:
     parsed = urlparse(args.base_url)
     if parsed.scheme != "https" or not parsed.netloc:
         raise RuntimeError("production smoke requires an https base URL")
-    try:
-        release = get_json(urljoin(args.base_url.rstrip("/") + "/", "release.json"))
-    except (urllib.error.URLError, TimeoutError) as error:
-        raise RuntimeError(
-            "production release metadata could not be reached"
-        ) from error
+    release = get_json_with_retry(
+        urljoin(args.base_url.rstrip("/") + "/", "release.json")
+    )
     if release.get("release_id") != args.release_id:
         raise RuntimeError("production release ID does not match the approved release")
     print(f"production smoke ok: release_id={args.release_id}")

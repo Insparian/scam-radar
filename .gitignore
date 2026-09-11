@@ -24,6 +24,7 @@ web/playwright-report/
 
 # Disposable and generated local state
 work/
+.wrangler/
 .DS_Store
 *.log
 
