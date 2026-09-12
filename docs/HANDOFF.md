@@ -3,7 +3,7 @@
 **As of:** 2026-09-12  
 **Repository:** <https://github.com/Insparian/scam-radar>  
 **Branch:** `main`  
-**Current commit:** `52936a7` (`Patch vulnerable web dependencies`)
+**Verified implementation baseline:** `52936a7` (`Patch vulnerable web dependencies`)
 
 This file is the continuity note for starting a new Codex conversation. It does not
 override `AGENTS.md` or [North Star](North%20Star.md); read those first.
