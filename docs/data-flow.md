@@ -1,6 +1,6 @@
 # Scam Radar V0.1 data flow
 
-**Current state:** Every application flow is fixture/local only. Rows marked “after activation” describe intended production movement and require Rui's separate approval before the first live run.
+**Current state:** Application data remains fixture/local only. The fixture-only Cloudflare preview paths F6/F7 are active; every live-data path remains disabled and requires Rui's separate approval before its first run.
 
 ## Trust zones
 
