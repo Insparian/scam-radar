@@ -3,7 +3,7 @@
 **As of:** 2026-09-16
 **Repository:** <https://github.com/Insparian/scam-radar>  
 **Branch:** `main`  
-**Verified implementation baseline:** `52936a7` (`Patch vulnerable web dependencies`)
+**Verified implementation baseline:** `4fb2b7f` (`Fix reviewer bootstrap result parsing`)
 
 This file is the continuity note for starting a new Codex conversation. It does not
 override `AGENTS.md` or [North Star](North%20Star.md); read those first.
@@ -60,7 +60,7 @@ production Supabase Auth client.
 
 ## Verification evidence
 
-At commit `52936a7`:
+Earlier verified baseline at commit `52936a7`:
 
 - `make check`: passed.
 - `make test`: passed (86 Python/database tests and 4 Playwright browser tests).
@@ -81,6 +81,8 @@ At commit `52936a7`:
   passed on commit `4fb2b7f`.
 - Protected Production Supabase foundation run `35068787852`: migration preview/apply,
   reviewer authorization, and production role-boundary verification all passed.
+- GitHub Offline CI run `35069048522`: final application and from-zero PostgreSQL
+  contracts passed on documentation commit `6701ce4`.
 - Live checks covered the home page, local search, suggestion buttons, result/detail
   navigation, bilingual `Last Verified / 信息核实至`, the fixture warning, and the
   `noindex, nofollow` response header.
@@ -132,6 +134,27 @@ reviewer UI is a separate product slice that needs its own Decision Checkpoint b
 it introduces a new browser-to-Supabase data path. Real-source collection remains
 later and separately gated.
 
+### Pending Decision Checkpoint: production reviewer login/Auth
+
+**Status:** Proposed but not approved. No implementation has started. The next
+conversation must wait for Rui's explicit `proceed` before changing code.
+
+- **What:** Add `/admin/login` with Supabase Auth, guard the reviewer routes, and replace
+  fixture-only reviewer reads/actions with narrowly scoped RPC access. Keep the public
+  site and public search static and browser-local.
+- **Why now:** The managed Auth identity, database migrations, and production role
+  boundaries are verified, but the operator still has no product login or durable
+  reviewer workflow.
+- **Problem it solves:** The reviewer cannot currently sign in through the product or
+  persist review decisions.
+- **Alternative considered:** Add only a login screen while leaving the reviewer UI on
+  fixtures. Do not choose this: it would imply that authenticated actions are durable
+  when they are not.
+- **North Star check:** This supports human approval and least privilege. The tension is
+  a new browser-to-Supabase path: Supabase would receive login credentials, session
+  metadata, and reviewer RPC traffic. Public search text must remain local and must not
+  be sent to Supabase.
+
 1. Decide whether to implement the production reviewer login/Auth slice now; do not
    assume that provisioning Supabase created or activated a login page.
 2. Before accepting live evidence, add a forward, append-only evidence-resolution
@@ -159,7 +182,9 @@ Relevant runbooks: [initial setup](runbooks/initial-setup.md),
 
 > Read `AGENTS.md`, `docs/North Star.md`, and `docs/HANDOFF.md` completely. Verify the
 > working tree, latest GitHub CI, and fixture-preview health. Continue with the first
-> item in `Next implementation sequence`. Do not activate real collection, Gemini,
+> item in `Next implementation sequence`. The reviewer login/Auth Decision Checkpoint
+> is proposed but not approved: do not implement it until I explicitly reply `proceed`
+> in this conversation. Do not activate real collection, Gemini,
 > production Supabase data movement, R2 backups, DNS, production publication, or live
 > automatic publication without the repository's Decision Checkpoint and my explicit
 > `proceed`. Do not spawn sub-agents unless I explicitly ask.
@@ -168,6 +193,9 @@ Relevant runbooks: [initial setup](runbooks/initial-setup.md),
 
 - No sub-agents are running.
 - Do not amend, force-push, or rewrite the existing commits.
-- This handoff was checked after the old token was revoked. Its final documentation
-  commit is intended to be pushed because Rui explicitly requested continuity across
-  conversations and devices.
+- The working tree should be clean and `main` should match `origin/main`; verify rather
+  than assume this in the next conversation.
+- `AGENTS.md` records Rui's standing authorization to commit and push complete,
+  verified, secret-free change sets for this open-source repository. Production data
+  mutations, deployments, releases, DNS changes, force pushes, and history rewrites
+  retain their separate confirmation gates.
