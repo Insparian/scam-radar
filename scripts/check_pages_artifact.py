@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +16,21 @@ REQUIRED_FILES = {
     Path("search-index.json"),
 }
 FORBIDDEN_RUNTIME_FILES = {Path("_worker.js"), Path("_routes.json")}
+PUBLIC_ADMIN_MARKERS = (b"get_reviewer_bootstrap", b"GoTrueClient")
+
+
+def assert_public_entry_does_not_load_admin_client(root: Path) -> None:
+    index_html = (root / "index.html").read_text(encoding="utf-8")
+    script_sources = re.findall(r'<script[^>]+src="([^"]+\.js)"', index_html)
+    for source in script_sources:
+        path = root / source.removeprefix("/")
+        if not path.is_file():
+            raise RuntimeError(f"Public entry references a missing script: {source}")
+        content = path.read_bytes()
+        if any(marker in content for marker in PUBLIC_ADMIN_MARKERS):
+            raise RuntimeError(
+                f"Public entry directly loads the private admin client: {source}"
+            )
 
 
 @dataclass(frozen=True)
@@ -47,6 +63,8 @@ def validate_pages_artifact(root: Path, expected_release_id: str) -> ArtifactSum
         raise RuntimeError(
             f"Pages artifact has {len(paths)} files; Free plan limit is {MAX_FILES}"
         )
+
+    assert_public_entry_does_not_load_admin_client(root)
 
     total_bytes = 0
     digest = hashlib.sha256()

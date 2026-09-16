@@ -1,6 +1,6 @@
 # Scam Radar V0.1 architecture
 
-**Status:** Offline implementation architecture, updated 2026-09-10. External collection, Gemini, production Supabase, encrypted R2 backup, Cloudflare deployment, DNS, and telemetry are not activated.
+**Status:** Offline-first implementation architecture, updated 2026-09-16. The empty Frankfurt Supabase foundation exists and reviewer Auth/RPC code is implemented but not deployed. External collection, Gemini, live evidence movement, encrypted R2 backup, production publication, DNS, and telemetry are not activated.
 
 ## Outcome and non-negotiable invariants
 
@@ -30,7 +30,7 @@ flowchart TD
     Safe -.->|"future separately activated live class"| PolicyVerify["Policy verification"]
     Review --> Admin
     Reviewer["Authenticated reviewer"] -->|"human decision"| Admin
-    Admin <-->|"PKCE session + narrow RPCs"| DB["Supabase PostgreSQL"]
+    Admin <-->|"password session + narrow RPCs"| DB["Supabase PostgreSQL"]
     PolicyVerify -->|"narrow policy RPC"| DB
     Worker -->|"private records and decision RPC"| DB
     DB -->|"one exact published release; trusted export"| Export["Immutable local JSON artifact"]
@@ -137,7 +137,7 @@ See [ADR-004](decisions/004-gemini-provider-boundary.md).
 
 | Mode | Allowed | Forbidden |
 |---|---|---|
-| Offline development (current) | Approved package registries during bootstrap, localhost, fixtures, recorded AI responses, local Supabase containers, static build | Real sources, Gemini, production Supabase, Cloudflare, DNS, telemetry |
+| Offline development (current) | Approved package registries during bootstrap, localhost, fixtures, recorded AI responses, local Supabase containers, static build, empty managed schema verification | Real sources, Gemini, production evidence movement, reviewer UI deployment, DNS, telemetry |
 | Shadow activation (later approval) | Explicitly approved/capped sources and Gemini, production persistence, policy shadow decisions, private exception review | Live automatic authorization, public deploy, or DNS unless separately enabled |
 | Production (later launch approval) | Scheduled capped collection, Policy Engine shadow routing, human exception/confirmation, exact release Direct Upload | Live automatic authorization without a separate narrowly scoped activation, automatic paid fallback, whole-web crawling |
 
@@ -149,7 +149,7 @@ Kill switches independently stop collection, AI, and deployment. Disabling work 
 - **Cloudflare token scope:** official API token resources permit one-account + Pages permission, not documented per-project restriction. Resolve account isolation at activation; see ADR-005.
 - **Free-tier/model change:** quotas and model IDs are configuration, not entitlement. Exhaustion queues work; it never triggers payment/provider fallback.
 - **Free-tier database recovery:** Supabase Free has no downloadable automatic backups. Production activation requires encrypted off-site logical backups and a tested restore path; see ADR-008.
-- **Static admin constraints:** PKCE callback and all auth states must work as browser-only flows, with clear loading/recovery states.
+- **Static admin constraints:** Password sessions and every auth state must work as browser-only flows, with clear loading/recovery states. Unconfigured builds fail closed without a network request.
 - **Two toolchains:** root `make` commands and pinned locks carry this complexity so Rui does not have to.
 - **False accusation:** claim-level evidence, legal-status wording, deterministic policy constraints, authenticated exception decisions, unpublish release, and audit/eval regression are launch blockers, not later polish.
 
@@ -163,3 +163,4 @@ Kill switches independently stop collection, AI, and deployment. Disabling work 
 - [ADR-006: Dependency review](decisions/006-dependency-review.md)
 - [ADR-007: Policy Engine with human exception review](decisions/007-policy-engine-human-exception.md)
 - [ADR-008: Free-tier continuity with encrypted off-site backups](decisions/008-free-tier-continuity-and-encrypted-backups.md)
+- [ADR-009: Official Supabase browser client](decisions/009-supabase-browser-client.md)

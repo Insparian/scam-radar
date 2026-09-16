@@ -17,6 +17,9 @@ without Docker, PostgreSQL, Supabase, network access, or credentials.
 - `20260916000100_service_role_table_lockdown.sql`: hosted-project hardening that keeps
   `service_role` on explicitly granted worker/exporter RPCs and removes direct public
   table or sequence privileges, including future defaults.
+- `20260916000200_reviewer_bootstrap_rpc.sql`: one authenticated, enabled-reviewer read
+  boundary for queue, draft, public-database policy, Heat, and evidence metadata. It
+  deliberately excludes raw source text and evidence spans.
 
 The Evidence Gate calculates `evidence_set_hash` as SHA-256 over accepted evidence,
 ordered by evidence UUID. Each element is serialized as:

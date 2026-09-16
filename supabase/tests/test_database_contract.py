@@ -40,6 +40,7 @@ EXPECTED_TABLES = {
 }
 
 REVIEWER_FUNCTIONS = {
+    "get_reviewer_bootstrap",
     "reject_review_item",
     "hold_for_evidence",
     "merge_pattern_candidate",
@@ -253,11 +254,11 @@ class DatabaseContractTest(unittest.TestCase):
         for function_name in REVIEWER_FUNCTIONS:
             self.assertRegex(
                 self.migrations_lower,
-                rf"grant\s+execute\s+on\s+function\s+public\.{function_name}\([^;]+\)\s+to\s+authenticated",
+                rf"grant\s+execute\s+on\s+function\s+public\.{function_name}\([^;]*\)\s+to\s+authenticated",
             )
             self.assertNotRegex(
                 self.migrations_lower,
-                rf"grant\s+execute\s+on\s+function\s+public\.{function_name}\([^;]+\)\s+to\s+anon",
+                rf"grant\s+execute\s+on\s+function\s+public\.{function_name}\([^;]*\)\s+to\s+anon",
             )
         for function_name in SERVICE_FUNCTIONS:
             self.assertRegex(
@@ -317,12 +318,22 @@ class DatabaseContractTest(unittest.TestCase):
             "distinct_regions_required",
             "claim_not_supported",
             "private.revision_public_claims",
+            "function public.get_reviewer_bootstrap",
         }
         for fragment in required_fragments:
             self.assertIn(fragment, self.migrations_lower)
         self.assertIn(
             "publication_requires_human_verified_revision", self.migrations_lower
         )
+        bootstrap_start = self.migrations_lower.rindex(
+            "create or replace function public.get_reviewer_bootstrap"
+        )
+        bootstrap_end = self.migrations_lower.index("$$;", bootstrap_start)
+        bootstrap_body = self.migrations_lower[bootstrap_start:bootstrap_end]
+        self.assertIn("private.assert_enabled_admin(actor_id)", bootstrap_body)
+        self.assertNotIn("clean_text", bootstrap_body)
+        self.assertNotIn("evidence_spans", bootstrap_body)
+        self.assertNotIn("candidate_payload", bootstrap_body)
         self.assertRegex(
             self.migrations_lower,
             re.compile(
@@ -406,9 +417,10 @@ class DatabaseContractTest(unittest.TestCase):
         for fragment in required_fragments:
             self.assertIn(fragment, self.migrations_lower)
         export_start = self.migrations_lower.rindex(
-            "function public.export_public_release"
+            "create or replace function public.export_public_release"
         )
-        export_body = self.migrations_lower[export_start:]
+        export_end = self.migrations_lower.index("$$;", export_start)
+        export_body = self.migrations_lower[export_start:export_end]
         self.assertNotIn("clean_text", export_body)
         self.assertNotIn("evidence_spans", export_body)
         self.assertNotIn("candidate_payload", export_body)

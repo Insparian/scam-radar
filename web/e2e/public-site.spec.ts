@@ -76,18 +76,21 @@ test("key public pages have no automatically detectable serious accessibility is
   }
 });
 
-test("admin fixture decisions are visibly non-durable", async ({ page }) => {
+test("admin fails closed when the production Auth client is not configured", async ({
+  page,
+}) => {
   await page.goto("/admin/review/");
   await expect(
-    page.getByText("POLICY ENGINE → safe to automate", { exact: true }),
+    page.getByRole("heading", { name: "审核登录尚未配置" }),
   ).toBeVisible();
   await expect(
-    page.getByText("V0.1 影子模式：即使符合自动路径，也不会获得发布权限。"),
+    page.getByText("因此不会发送登录或审核请求", { exact: false }),
   ).toBeVisible();
-  await page.getByRole("button", { name: /冒充亲属紧急事故骗局/ }).click();
+
+  await page.goto("/admin/login/");
+  await expect(page.getByRole("heading", { name: "登录审核台" })).toBeVisible();
   await expect(
-    page.getByText("POLICY ENGINE → review required", { exact: true }),
+    page.getByText("当前构建没有连接生产审核系统", { exact: false }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "先保留，等待更多证据" }).click();
-  await expect(page.getByRole("status")).toContainText("没有写入数据库");
+  await expect(page.getByLabel("审核邮箱")).toHaveCount(0);
 });

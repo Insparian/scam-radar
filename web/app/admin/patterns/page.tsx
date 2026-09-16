@@ -1,47 +1,17 @@
 import Link from "next/link";
 
-import { formatChineseDate } from "@/lib/public-data/copy";
-import { getRelease } from "@/lib/public-data/load";
-
 export default function PatternsAdminPage() {
-  const release = getRelease();
   return (
-    <main id="main-content" className="admin-page">
-      <header className="admin-page-header">
-        <div>
-          <span className="admin-eyebrow">IMMUTABLE FIXTURE REVISIONS</span>
-          <h1>Scam Patterns</h1>
-          <p>公开内容以固定修订为单位；更正不会覆盖旧修订。</p>
-        </div>
-      </header>
-      <div className="admin-table" role="table" aria-label="骗局模式">
-        <div className="admin-table-row header" role="row">
-          <span>模式</span>
-          <span>类型</span>
-          <span>证据</span>
-          <span>Heat</span>
-          <span>信息核实至</span>
-        </div>
-        {release.patterns.map((pattern) => (
-          <Link
-            className="admin-table-row"
-            role="row"
-            href={`/scam/${pattern.slug}/`}
-            key={pattern.id}
-          >
-            <span>
-              <strong>{pattern.canonical_name}</strong>
-              <small>
-                {pattern.revision_id.slice(0, 8)} · {pattern.slug}
-              </small>
-            </span>
-            <span>{pattern.risk_type}</span>
-            <span>{pattern.evidence_level}</span>
-            <span>{pattern.heat.score}</span>
-            <span>{formatChineseDate(pattern.last_verified_at)}</span>
-          </Link>
-        ))}
-      </div>
+    <main id="main-content" className="admin-page admin-empty-state">
+      <span className="admin-eyebrow">SCOPE LIMITED TO REVIEW QUEUE</span>
+      <h1>生产模式浏览尚未接入</h1>
+      <p>
+        当前批准的浏览器读取边界只覆盖开放审核项。这里不会用 fixture
+        冒充生产数据。
+      </p>
+      <Link className="button-primary" href="/admin/review/">
+        返回审核队列
+      </Link>
     </main>
   );
 }

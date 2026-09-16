@@ -1,6 +1,6 @@
 # Scam Radar V0.1 data flow
 
-**Current state:** Application data remains fixture/local only. The fixture-only Cloudflare preview paths F6/F7 are active; every live-data path remains disabled and requires Rui's separate approval before its first run.
+**Current state:** Application data remains fixture/local only. The empty Frankfurt Supabase foundation exists, and F4 reviewer Auth/RPC code is implemented and locally verified, but its forward migration and browser configuration are not deployed. The fixture-only Cloudflare preview paths F6/F7 are active; every live-data path remains disabled until its approved activation step.
 
 ## Trust zones
 
@@ -32,7 +32,7 @@ flowchart TB
     S --> N --> P --> PE
     P <-->|"redacted bounded source text / structured proposal"| G
     PE -->|"policy decision + provenance"| DB
-    R <-->|"PKCE JWT + narrow actions"| DB
+    R <-->|"password session + narrow RPCs"| DB
     DB -->|"one release_id"| X --> B -->|"static assets only"| C
     DB -.->|"transient logical export"| K["Encrypt on trusted runner"] -.->|"ciphertext only"| O
     C -->|"HTML/assets/local index"| V
@@ -47,8 +47,8 @@ Source text is data, never instructions. External content cannot change prompt, 
 | F0 | Developer/CI → official npm/PyPI/container registries | Package names, versions, runner IP/timing | Approved bootstrap | Allowed | Pinned direct versions and committed locks; no application data |
 | F1 | Actions runner → allowlisted public source | URL, reviewed request headers, runner IP/timing | Discover/fetch public pages | Disabled until activation | Source Registry, terms/robots review, per-host delay, timeout/retry/caps, kill switch |
 | F2 | Runner → Gemini/Google | Prompt metadata plus bounded cleaned public-source text | Relevance, extraction, comparison proposal | Disabled until activation | PII redaction, no notes/secrets, char/call caps, provider switch, schema + semantic validation |
-| F3 | Runner → Supabase | Source metadata/text, hashes, AI artifacts, evidence proposals, scores, policy decisions, exception/run state | Durable private state | Local containers only | Secret scoped to step, typed storage adapter, append-only decisions, TLS live, no body in logs |
-| F4 | Reviewer browser → Supabase | Publishable key, PKCE/Auth session, reads allowed by RLS, exception action and decision note | Human exception decision or V0.1 shadow confirmation | Local fixture/auth only | RLS/grants, enabled admin row, row version, transactional RPC, distinct human audit |
+| F3 | Runner → Supabase | Source metadata/text, hashes, AI artifacts, evidence proposals, scores, policy decisions, exception/run state | Durable private state | Empty production schema provisioned; application writes disabled | Secret scoped to step, typed storage adapter, append-only decisions, TLS live, no body in logs |
+| F4 | Reviewer browser → Supabase | Publishable key, login credentials/session metadata, narrow queue payload, evidence choices, exception action and decision note | Human exception decision or V0.1 shadow confirmation | Code and local contracts complete; production migration/config/deployment pending | RPC-only browser data access, enabled admin row, row version, transactional RPC, distinct human audit, unconfigured build fails closed |
 | F5 | Exporter → Supabase | Exact `release_id` request | Read immutable published manifest | Local only | Secret-bearing step; verified-revision/release checks; no mutable “latest” query |
 | F6 | Runner → Cloudflare Pages | Hashed compiled static directory | Preview/production publication | Fixture preview active; live-data production disabled | Manual deploy switch, protected Pages-only token, same-artifact smoke, no backend secret |
 | F7 | Public browser → Cloudflare | Page/asset/search-index paths and ordinary network metadata | Serve public database | Fixture preview active at `preview.insparian-scam-radar.pages.dev`; no custom DNS | One immutable fixture release, visible test-data warning, `noindex`, no analytics/telemetry |
@@ -184,7 +184,7 @@ All database timestamps are UTC. Only the UI localizes them. Logs use IDs, hashe
 
 ## Activation checklist for data movement
 
-Each external flow is activated independently. Before enabling any flow, Rui must review that flow's exact destination, outbound data, purpose, caps, credentials, stop control, and user impact. F1 requires the exact first five URLs and collection policies; F3 requires the Supabase region, reviewer identity, and data-location implications; F4 requires the bounded Google payload and call/character caps; F6–F7 require the Cloudflare account/token scope, artifact boundary, quota check, and resolved public access; F9 requires encrypted-backup recipient/recovery custody, retention, and a restore rehearsal; F8 requires the exact domain change. Approval must be explicit, and approval for one flow grants no authority to another. Provisioning alone does not enable collection, AI, backup, deploy, DNS, or live policy authorization. Turning on `apply_live_policy_publication` is a separate decision after shadow-mode performance is measured for a narrowly defined class.
+Each external flow is activated independently. Before enabling any flow, Rui must review that flow's exact destination, outbound data, purpose, caps, credentials, stop control, and user impact. F1 requires the exact first five URLs and collection policies; F2 requires the bounded Google payload and call/character caps; F3 requires the Supabase region, worker credential, and data-location implications; F4 requires the reviewer credential/session/RPC boundary and a protected build/deploy path; F6–F7 require the Cloudflare account/token scope, artifact boundary, quota check, and resolved public access; F9 requires encrypted-backup recipient/recovery custody, retention, and a restore rehearsal; custom-domain activation requires the exact DNS change. Approval must be explicit, and approval for one flow grants no authority to another. Provisioning alone does not enable collection, AI, backup, deploy, DNS, or live policy authorization. Turning on `apply_live_policy_publication` is a separate decision after shadow-mode performance is measured for a narrowly defined class.
 
 ## Official platform references rechecked
 

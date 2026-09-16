@@ -20,7 +20,8 @@ begin
         '20260816000200',
         '20260816000300',
         '20260816000400',
-        '20260916000100'
+        '20260916000100',
+        '20260916000200'
     ]::text[] then
         raise exception 'unexpected_migration_set: %', applied_versions;
     end if;
@@ -39,6 +40,22 @@ begin
         'EXECUTE'
     ) then
         raise exception 'authenticated_cannot_confirm_human_publication';
+    end if;
+
+    if not has_function_privilege(
+        'authenticated',
+        'public.get_reviewer_bootstrap()',
+        'EXECUTE'
+    ) or has_function_privilege(
+        'anon',
+        'public.get_reviewer_bootstrap()',
+        'EXECUTE'
+    ) or has_function_privilege(
+        'service_role',
+        'public.get_reviewer_bootstrap()',
+        'EXECUTE'
+    ) then
+        raise exception 'reviewer_bootstrap_rpc_grant_invalid';
     end if;
 
     if not has_function_privilege(
@@ -342,6 +359,7 @@ do $$
 declare
     decision_id uuid;
     approved_revision_id uuid;
+    bootstrap jsonb;
 begin
     perform set_config(
         'request.jwt.claims',
@@ -357,6 +375,23 @@ begin
 
     select policy_decision_id into decision_id
     from local_contract_context;
+
+    bootstrap := public.get_reviewer_bootstrap();
+
+    if bootstrap #>> '{reviewer,user_id}'
+           <> 'eeeeeeee-0000-4000-8000-000000000001'
+       or bootstrap #>> '{reviewer,role}' <> 'reviewer'
+       or jsonb_array_length(bootstrap -> 'queue') <> 1
+       or bootstrap #>> '{queue,0,id}'
+           <> 'a0000000-0000-4000-8000-000000000001'
+       or bootstrap #>> '{queue,0,pattern,draft_revision,id}'
+           <> '60000000-0000-4000-8000-000000000001'
+       or bootstrap #>> '{queue,0,policy,id}' <> decision_id::text
+       or bootstrap #>> '{queue,0,evidence,0,id}'
+           <> '70000000-0000-4000-8000-000000000001'
+       or (bootstrap #> '{queue,0}') ? 'candidate_payload' then
+        raise exception 'reviewer_bootstrap_payload_invalid: %', bootstrap;
+    end if;
 
     begin
         perform public.confirm_policy_publication(

@@ -6,11 +6,11 @@
 
 ## 当前状态
 
-仓库目前是一个采用 Apache-2.0 的 **offline-first V0.1** 公益项目：默认只使用 fixtures、recorded AI responses 和本地文件/数据库测试。公开代码不包含生产数据；完整边界见 [open-source boundary](docs/open-source-boundary.md)。公开的 [fixture preview](https://preview.insparian-scam-radar.pages.dev/) 只演示测试数据，并非实时诈骗数据库。所有真实来源都在 `config/sources.yaml` 中保持 `enabled: false`，以下功能尚未获准启用，也不能视为已完成线上验证：
+仓库目前是一个采用 Apache-2.0 的 **offline-first V0.1** 公益项目：默认只使用 fixtures、recorded AI responses 和本地文件/数据库测试。公开代码不包含生产数据；完整边界见 [open-source boundary](docs/open-source-boundary.md)。公开的 [fixture preview](https://preview.insparian-scam-radar.pages.dev/) 只演示测试数据，并非实时诈骗数据库。Frankfurt Supabase 中只有空生产 schema 和一个 reviewer 身份；浏览器登录/RPC 实现已在代码中完成，但尚未迁移或部署到公开 preview。所有真实来源都在 `config/sources.yaml` 中保持 `enabled: false`，以下功能尚未获准启用，也不能视为已完成线上验证：
 
 - 真实网站采集；
 - Gemini API 调用；
-- production Supabase 连接；
+- 真实 evidence 的 production Supabase 读写；
 - 加密 R2 数据库备份；
 - 真实数据的 production Pages 发布或 DNS 修改；
 - 任何 analytics、telemetry 或用户搜索词上传。

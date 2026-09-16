@@ -26,6 +26,7 @@ web/playwright-report/
 work/
 .wrangler/
 supabase/.temp/
+supabase/.branches/
 .DS_Store
 *.log
 

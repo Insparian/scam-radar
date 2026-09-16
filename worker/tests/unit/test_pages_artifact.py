@@ -43,3 +43,20 @@ def test_pages_artifact_rejects_runtime_entrypoints(tmp_path: Path, runtime_file
 
     with pytest.raises(RuntimeError, match="runtime entrypoint"):
         validate_pages_artifact(root, "fixture-release")
+
+
+def test_pages_artifact_rejects_admin_client_loaded_by_public_entry(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "out"
+    write_minimal_artifact(root)
+    chunk = root / "_next" / "static" / "chunks" / "admin.js"
+    chunk.parent.mkdir(parents=True)
+    chunk.write_text('const rpc = "get_reviewer_bootstrap";', encoding="utf-8")
+    (root / "index.html").write_text(
+        '<html><script src="/_next/static/chunks/admin.js"></script></html>',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="private admin client"):
+        validate_pages_artifact(root, "fixture-release")

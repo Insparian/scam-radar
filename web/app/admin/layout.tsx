@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AdminShell } from "@/components/admin-shell";
+import { AdminAuthBoundary } from "@/components/admin-auth-boundary";
 
 export const metadata: Metadata = {
   title: { default: "运营台", template: "%s｜骗局雷达运营台" },
@@ -12,5 +12,5 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AdminShell>{children}</AdminShell>;
+  return <AdminAuthBoundary>{children}</AdminAuthBoundary>;
 }

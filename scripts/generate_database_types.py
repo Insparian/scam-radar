@@ -601,10 +601,15 @@ def render_types(
     )
     for function in functions:
         lines.extend([f"      {function.name}: {{", "        Args: {"])
-        for argument in function.arguments:
-            lines.append(
-                render_property(argument.name, argument.ts_type, argument.optional, 10)
-            )
+        if function.arguments:
+            for argument in function.arguments:
+                lines.append(
+                    render_property(
+                        argument.name, argument.ts_type, argument.optional, 10
+                    )
+                )
+        else:
+            lines.append("          [_ in never]: never")
         lines.extend(
             [
                 "        }",

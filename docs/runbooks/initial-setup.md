@@ -19,11 +19,18 @@ Get a fresh checkout to a verified offline fixture state. This runbook does **no
    make open-source-audit
    ```
 
-4. Start `make web` and check the fixture home, one search, one detail page, a missing route, large-text mobile layout, visible keyboard focus, public “信息核实至”, and the admin Policy Engine route/reason display.
+4. Start `make web` and check the fixture home, one search, one detail page, a missing route, large-text mobile layout, visible keyboard focus, public “信息核实至”, and that `/admin/login/` visibly fails closed when the public Supabase configuration is absent.
 5. Confirm `config/sources.yaml` keeps every source `enabled: false`, `config/publication-policy-v0.1.yaml` keeps `shadow_mode: true` and `live_auto_publish_enabled: false`, and `.env.example` contains only fake/disabled values.
 6. Record command results and failures. Do not describe a real service as tested.
 
 Package installation may reach approved official registries. Application tests must use fixtures/localhost only.
+
+The private reviewer UI initializes Supabase only under `/admin`. A later approved
+reviewer deployment must provide `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` at build time. Both values are visible in the
+compiled site and grant no authority by themselves. Never place a secret/service key,
+database URL, reviewer email, or password in a `NEXT_PUBLIC_` variable. Omit either
+public value to make the admin surface fail closed without a network request.
 
 ## Real local database contract — optional
 
