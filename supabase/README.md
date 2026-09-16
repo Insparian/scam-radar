@@ -14,6 +14,9 @@ without Docker, PostgreSQL, Supabase, network access, or credentials.
 - `20260816000400_policy_engine_verification.sql`: append-only Policy Engine decisions,
   separate human/policy verification provenance, the shadow-confirmation transaction,
   a fail-closed live-policy transaction, and public release schema v2 freshness snapshots.
+- `20260916000100_service_role_table_lockdown.sql`: hosted-project hardening that keeps
+  `service_role` on explicitly granted worker/exporter RPCs and removes direct public
+  table or sequence privileges, including future defaults.
 
 The Evidence Gate calculates `evidence_set_hash` as SHA-256 over accepted evidence,
 ordered by evidence UUID. Each element is serialized as:
@@ -94,6 +97,21 @@ this repository, including forward `ALTER TABLE ADD COLUMN` changes and replaced
 After the Supabase CLI is available, CI must also rebuild the local database from zero,
 execute transactional RPC tests, and compare against
 `supabase gen types typescript --local`.
+
+## Empty production foundation
+
+The protected manual `Production Supabase foundation` workflow is the only reviewed
+path for the first production migration. It uses a project-scoped database URL rather
+than an account-wide Supabase access token, applies forward migrations without the
+synthetic seed, maps a pre-created Auth user from a private environment secret, and
+then checks that application tables remain empty. The verification proves that anon,
+authenticated, and service roles have no broad table grants; reviewer, worker, and
+exporter RPCs remain separated; and the live automatic-publication allowlist is empty.
+
+The reviewer sets their password directly in the Supabase Dashboard bootstrap; the
+workflow neither receives that password nor adds an SMTP dependency. No real evidence
+enters the database, and this workflow does not enable collection, Gemini, backups,
+deployment, DNS, or live automatic publication.
 
 ## Deliberate Task 4 boundary
 

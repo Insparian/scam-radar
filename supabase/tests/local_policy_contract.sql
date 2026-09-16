@@ -19,7 +19,8 @@ begin
         '20260816000100',
         '20260816000200',
         '20260816000300',
-        '20260816000400'
+        '20260816000400',
+        '20260916000100'
     ]::text[] then
         raise exception 'unexpected_migration_set: %', applied_versions;
     end if;

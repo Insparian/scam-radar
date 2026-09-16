@@ -1,6 +1,6 @@
 # Scam Radar implementation handoff
 
-**As of:** 2026-09-12  
+**As of:** 2026-09-16
 **Repository:** <https://github.com/Insparian/scam-radar>  
 **Branch:** `main`  
 **Verified implementation baseline:** `52936a7` (`Patch vulnerable web dependencies`)
@@ -20,6 +20,13 @@ The repository is public and the fixture preview deploys only through the protec
 manual `Cloudflare Pages fixture preview` GitHub workflow. The workflow uploads the
 prebuilt static `web/out` directory; it does not enable Cloudflare Workers, DNS, R2,
 AI, analytics, or telemetry.
+
+An empty Supabase Free production foundation now exists in Frankfurt
+(`eu-central-1`). Five forward migrations are applied, one project-specific Auth user
+is mapped to an enabled reviewer, and production probes confirm zero application
+rows plus anon/authenticated/service-role table isolation. This provisioning does not
+create a product login page: the web reviewer UI is still fixture-only and has no
+production Supabase Auth client.
 
 ## Completed
 
@@ -46,6 +53,9 @@ AI, analytics, or telemetry.
 - [x] The exposed older Cloudflare Pages token was revoked after the replacement
   deployment passed. The Cloudflare account token list now contains only the active
   dated replacement for this deployment path.
+- [x] Empty Frankfurt Supabase production foundation, five migration versions, one
+  enabled reviewer, RPC-only worker/exporter boundaries, and an empty live automatic
+  publication allowlist verified against the managed database.
 
 ## Verification evidence
 
@@ -62,6 +72,9 @@ At commit `52936a7`:
 - Cloudflare deployment run `34668000357`: passed end to end with the replacement
   token, including public smoke checks.
 - Live fixture release ID: `fixture-2026-08-16-001`.
+- 2026-09-16 local verification after the hosted Supabase hardening migration:
+  `make check`, 93 Python/database tests, 4 Playwright tests, and 100 recorded eval
+  cases passed; `launch_qualified: false` remains intentional.
 - Live checks covered the home page, local search, suggestion buttons, result/detail
   navigation, bilingual `Last Verified / 信息核实至`, the fixture warning, and the
   `noindex, nofollow` response header.
@@ -79,12 +92,18 @@ At commit `52936a7`:
 - The older token named `Insparian Scam Radar Pages Deploy` was exposed in chat and
   revoked on 2026-09-12. Do not recreate or reuse it.
 - No credential is stored in the checkout.
+- The protected GitHub `supabase-production` environment has all live-data switches
+  false. Its encrypted `SUPABASE_DB_URL` uses the Frankfurt session pooler so
+  GitHub-hosted IPv4 runners can connect, and `SUPABASE_REVIEWER_EMAIL` contains the
+  private project mailbox. Neither value is present in the checkout or logs.
 
 ## External-boundary status
 
-Only the fixture preview paths F6/F7 are active. Package registry access F0 is allowed,
-and fixture search F8 remains browser-local. These production paths remain disabled
-and require a fresh Decision Checkpoint plus Rui's explicit `proceed` for each scope:
+Only the fixture preview paths F6/F7 are active for application traffic. Package
+registry access F0 is allowed, and fixture search F8 remains browser-local. F3/F4
+have been provisioned only as an empty schema plus one reviewer identity and security
+verification; the product does not yet connect to them. The following live scopes
+remain disabled and require a fresh Decision Checkpoint plus Rui's explicit `proceed`:
 
 - F1 real-source discovery/fetching;
 - F2 Gemini/Google processing;
@@ -101,28 +120,29 @@ it. Keep all source entries disabled, all collection/AI/deploy kill switches off
 
 ## Next implementation sequence
 
-The next meaningful slice is the **production Supabase foundation**, not real-source
-collection. Before implementing it, write the required Decision Checkpoint and obtain
-Rui's explicit `proceed`. The checkpoint must resolve the Supabase region and reviewer
-email and explain the data-location/user impact.
+The production Supabase foundation is complete. The product login page and live Auth
+client are not implemented; connecting the reviewer UI is a separate product slice
+that needs its own Decision Checkpoint because it introduces a new browser-to-Supabase
+data path. Real-source collection remains later and separately gated.
 
-1. Create/link the approved Supabase project, apply the existing migrations through a
-   protected manual path, bootstrap one reviewer, and prove anon/reviewer/worker/
-   exporter boundaries in production without adding real evidence.
-2. Before accepting live evidence, add a forward, append-only evidence-resolution
+1. Commit and push the reviewed foundation changes, then dry-run the protected manual
+   workflow against the already aligned migration ledger. Do not push automatically.
+2. Decide whether to implement the production reviewer login/Auth slice now; do not
+   assume that provisioning Supabase created or activated a login page.
+3. Before accepting live evidence, add a forward, append-only evidence-resolution
    event migration so rejected evidence retains honest actor/policy provenance. Do
    not invent historical reviewers or timestamps.
-3. Add one explicit database schema-v2 export mapping test covering every public-web
+4. Add one explicit database schema-v2 export mapping test covering every public-web
    presentation field; the live build must not depend on fixture-only copy.
-4. Design and approve encrypted R2 recovery: exact outbound data, encryption before
+5. Design and approve encrypted R2 recovery: exact outbound data, encryption before
    upload, recovery-key custody, retention, caps, and a restore rehearsal.
-5. Separately review the first exact source URLs, terms/robots rules, collection caps,
+6. Separately review the first exact source URLs, terms/robots rules, collection caps,
    contact address, Gemini payload boundary, and call/character limits.
-6. Run one capped source in shadow mode, manually inspect every row, proposal, decision,
+7. Run one capped source in shadow mode, manually inspect every row, proposal, decision,
    and log, and keep live automatic publication disabled.
-7. Only after measured live performance, consider a narrowly defined automatic policy
+8. Only after measured live performance, consider a narrowly defined automatic policy
    class through a new forward allowlist migration and separate approval.
-8. Treat production publication, custom domain/DNS, mainland mobile/WeChat validation,
+9. Treat production publication, custom domain/DNS, mainland mobile/WeChat validation,
    and launch as later, separately approved steps.
 
 Relevant runbooks: [initial setup](runbooks/initial-setup.md),

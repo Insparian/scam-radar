@@ -1,4 +1,4 @@
-name: Production migration (disabled until activation)
+name: Production Supabase foundation
 
 on:
   workflow_dispatch:
@@ -16,9 +16,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  activation-guard:
+  migrate-and-verify:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 20
+    environment:
+      name: supabase-production
+    env:
+      SCAM_RADAR_ALLOW_PRODUCTION_SUPABASE: "true"
+      SCAM_RADAR_COLLECT_ENABLED: "false"
+      SCAM_RADAR_AI_ENABLED: "false"
+      SCAM_RADAR_DEPLOY_ENABLED: "false"
+      SCAM_RADAR_BACKUP_ENABLED: "false"
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_REVIEWER_EMAIL: ${{ secrets.SUPABASE_REVIEWER_EMAIL }}
     steps:
       - name: Require exact human confirmation
         env:
@@ -28,8 +39,48 @@ jobs:
             echo "Confirmation did not match. Production was unchanged."
             exit 1
           }
-      - name: Keep production database untouched before activation
+      - name: Check out immutable source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use Node 24
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Validate protected configuration
         run: |
-          echo "Production migration is not activated. No Supabase credential was read."
-          echo "### Migration blocked: activation pending" >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+          test -n "$SUPABASE_DB_URL"
+          test -n "$SUPABASE_REVIEWER_EMAIL"
+          test "$SCAM_RADAR_COLLECT_ENABLED" = "false"
+          test "$SCAM_RADAR_AI_ENABLED" = "false"
+          test "$SCAM_RADAR_DEPLOY_ENABLED" = "false"
+          test "$SCAM_RADAR_BACKUP_ENABLED" = "false"
+          command -v psql >/dev/null
+      - name: Preview forward migrations
+        run: npx --yes supabase@2.115.0 db push --db-url "$SUPABASE_DB_URL" --include-all --dry-run
+      - name: Apply forward migrations
+        run: npx --yes supabase@2.115.0 db push --db-url "$SUPABASE_DB_URL" --include-all
+      - name: Authorize the pre-created reviewer identity
+        run: python scripts/supabase_foundation.py bootstrap-reviewer
+      - name: Verify production role boundaries
+        run: python scripts/supabase_foundation.py verify
+      - name: Record the narrow activation scope
+        if: always()
+        run: |
+          {
+            echo "## Production Supabase foundation"
+            echo ""
+            echo "- Forward migrations: requested"
+            echo "- Reviewer mailbox: withheld"
+            echo "- Real source evidence: 0"
+            echo "- Collection: disabled"
+            echo "- Gemini: disabled"
+            echo "- Backup upload: disabled"
+            echo "- Production deployment: disabled"
+            echo "- Live automatic publication allowlist: expected empty"
+          } >> "$GITHUB_STEP_SUMMARY"

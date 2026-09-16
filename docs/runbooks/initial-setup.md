@@ -76,7 +76,14 @@ Only after approval:
 
 1. Create/link the approved GitHub, Supabase, Gemini, private R2 bucket, and Direct Upload Pages projects.
 2. Store secrets in GitHub Encrypted Secrets, never repository files or workflow scope.
-3. Apply migrations through the protected manual workflow and bootstrap one reviewer.
+3. Create the first reviewer in Supabase Auth through the Dashboard so the reviewer
+   sets their own password; do not add an SMTP service merely for this bootstrap.
+   Configure the protected `supabase-production` GitHub environment with the
+   project-scoped `SUPABASE_DB_URL`, and keep the reviewer mailbox only in
+   `SUPABASE_REVIEWER_EMAIL`. Run the manual production-foundation workflow with its
+   exact confirmation to apply migrations and authorize that existing Auth user in
+   `admin_users`. Do not put the reviewer address in a workflow input, log, issue, or
+   repository file.
 4. Prove anon/reviewer/worker/exporter boundaries, append-only policy decisions, distinct policy/human provenance, shadow-decision rejection, and an empty exact-policy activation allowlist with production-safe checks.
 5. Before accepting live evidence, add the forward append-only evidence-resolution event migration so rejected evidence retains honest actor/policy provenance; never invent a historical reviewer or timestamp.
 6. Contract-test one explicit mapping from the database v2 export to every required public-web presentation field; do not activate a build that still depends on fixture-only copy.
