@@ -91,5 +91,6 @@ Your role is to help Rui make the best decision, not to support his opinion.
 ## Git and Deployment
 
 - Commit messages are concise English descriptions of intent.
-- Do not push automatically.
+- For this open-source repository, commit and push complete, verified, secret-free change sets when appropriate without asking Rui each time. Do not push work-in-progress solely as a checkpoint.
+- Force pushes, history rewrites, releases, deployments, DNS changes, and production data mutations still require Rui's explicit confirmation; preserve any stricter exact-confirmation gate already defined by the repository.
 - Do not deploy, create cloud projects, modify DNS, or enable real collection/AI without Rui's explicit activation approval.
