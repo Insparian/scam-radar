@@ -44,7 +44,7 @@ def test_bootstrap_requires_existing_auth_user(
         supabase_foundation,
         "run_psql",
         lambda *_args, **_kwargs: subprocess.CompletedProcess(
-            args=["psql"], returncode=0, stdout="", stderr=""
+            args=["psql"], returncode=0, stdout="0\n", stderr=""
         ),
     )
 
@@ -64,7 +64,7 @@ def test_bootstrap_maps_exactly_one_auth_user(
         lambda *_args, **_kwargs: subprocess.CompletedProcess(
             args=["psql"],
             returncode=0,
-            stdout="11111111-1111-4111-8111-111111111111\n",
+            stdout="1\n",
             stderr="",
         ),
     )
@@ -72,6 +72,11 @@ def test_bootstrap_maps_exactly_one_auth_user(
     supabase_foundation.bootstrap_reviewer()
 
     assert "reviewer@example.com" not in capsys.readouterr().out
+
+
+def test_bootstrap_query_returns_only_the_upsert_count() -> None:
+    assert "with upserted_reviewer as" in supabase_foundation.BOOTSTRAP_REVIEWER_SQL
+    assert "select count(*)" in supabase_foundation.BOOTSTRAP_REVIEWER_SQL
 
 
 def test_production_guard_is_closed_by_default(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -7,13 +7,17 @@ import subprocess
 from collections.abc import Mapping
 
 BOOTSTRAP_REVIEWER_SQL = """
-insert into public.admin_users (user_id, role, enabled)
-select id, 'reviewer', true
-from auth.users
-where lower(email) = lower(:'reviewer_email')
-on conflict (user_id) do update
-set role = 'reviewer', enabled = true
-returning user_id;
+with upserted_reviewer as (
+    insert into public.admin_users (user_id, role, enabled)
+    select id, 'reviewer', true
+    from auth.users
+    where lower(email) = lower(:'reviewer_email')
+    on conflict (user_id) do update
+    set role = 'reviewer', enabled = true
+    returning user_id
+)
+select count(*)
+from upserted_reviewer;
 """
 
 FOUNDATION_QUERY = """
@@ -163,10 +167,10 @@ def bootstrap_reviewer() -> None:
         BOOTSTRAP_REVIEWER_SQL,
         variables={"reviewer_email": reviewer_email},
     )
-    reviewer_rows = [
+    reviewer_counts = [
         line.strip() for line in result.stdout.splitlines() if line.strip()
     ]
-    if len(reviewer_rows) != 1:
+    if reviewer_counts != ["1"]:
         raise RuntimeError(
             "reviewer bootstrap requires exactly one pre-created Supabase Auth user"
         )
