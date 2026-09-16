@@ -35,3 +35,12 @@ production deployment, DNS, or live automatic publication was activated. After
 Rui's explicit credential-storage confirmation, the project-scoped
 session-pooler database URL and private reviewer email were stored in the protected
 GitHub `supabase-production` environment. Neither value is present in the checkout.
+
+The first protected workflow run exposed a false-negative in the reviewer bootstrap:
+`psql` returned both the UUID row and an insert status line, while the script counted
+output lines instead of returning a database-side scalar. Commit `4fb2b7f` changed the
+query to return only the upsert count and added a regression test. Offline CI run
+`35068549771` then passed, followed by protected production run `35068787852`, which
+completed migration preview/apply, reviewer authorization, and all production
+role-boundary probes. No collection, AI, backup, deployment, DNS, or publication path
+was enabled.

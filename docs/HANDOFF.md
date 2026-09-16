@@ -55,7 +55,8 @@ production Supabase Auth client.
   dated replacement for this deployment path.
 - [x] Empty Frankfurt Supabase production foundation, five migration versions, one
   enabled reviewer, RPC-only worker/exporter boundaries, and an empty live automatic
-  publication allowlist verified against the managed database.
+  publication allowlist verified against the managed database and through the
+  protected manual GitHub workflow.
 
 ## Verification evidence
 
@@ -72,9 +73,14 @@ At commit `52936a7`:
 - Cloudflare deployment run `34668000357`: passed end to end with the replacement
   token, including public smoke checks.
 - Live fixture release ID: `fixture-2026-08-16-001`.
-- 2026-09-16 local verification after the hosted Supabase hardening migration:
-  `make check`, 93 Python/database tests, 4 Playwright tests, and 100 recorded eval
-  cases passed; `launch_qualified: false` remains intentional.
+- 2026-09-16 local verification after the hosted Supabase hardening migration and
+  reviewer-bootstrap parser fix: `make check`, 94 Python/database tests, 4 Playwright
+  tests, and 100 recorded eval cases passed; `launch_qualified: false` remains
+  intentional.
+- GitHub Offline CI run `35068549771`: application and from-zero PostgreSQL contracts
+  passed on commit `4fb2b7f`.
+- Protected Production Supabase foundation run `35068787852`: migration preview/apply,
+  reviewer authorization, and production role-boundary verification all passed.
 - Live checks covered the home page, local search, suggestion buttons, result/detail
   navigation, bilingual `Last Verified / 信息核实至`, the fixture warning, and the
   `noindex, nofollow` response header.
@@ -120,29 +126,28 @@ it. Keep all source entries disabled, all collection/AI/deploy kill switches off
 
 ## Next implementation sequence
 
-The production Supabase foundation is complete. The product login page and live Auth
-client are not implemented; connecting the reviewer UI is a separate product slice
-that needs its own Decision Checkpoint because it introduces a new browser-to-Supabase
-data path. Real-source collection remains later and separately gated.
+The production Supabase foundation and its protected automation path are complete.
+The product login page and live Auth client are not implemented; connecting the
+reviewer UI is a separate product slice that needs its own Decision Checkpoint because
+it introduces a new browser-to-Supabase data path. Real-source collection remains
+later and separately gated.
 
-1. Commit and push the reviewed foundation changes, then dry-run the protected manual
-   workflow against the already aligned migration ledger. Do not push automatically.
-2. Decide whether to implement the production reviewer login/Auth slice now; do not
+1. Decide whether to implement the production reviewer login/Auth slice now; do not
    assume that provisioning Supabase created or activated a login page.
-3. Before accepting live evidence, add a forward, append-only evidence-resolution
+2. Before accepting live evidence, add a forward, append-only evidence-resolution
    event migration so rejected evidence retains honest actor/policy provenance. Do
    not invent historical reviewers or timestamps.
-4. Add one explicit database schema-v2 export mapping test covering every public-web
+3. Add one explicit database schema-v2 export mapping test covering every public-web
    presentation field; the live build must not depend on fixture-only copy.
-5. Design and approve encrypted R2 recovery: exact outbound data, encryption before
+4. Design and approve encrypted R2 recovery: exact outbound data, encryption before
    upload, recovery-key custody, retention, caps, and a restore rehearsal.
-6. Separately review the first exact source URLs, terms/robots rules, collection caps,
+5. Separately review the first exact source URLs, terms/robots rules, collection caps,
    contact address, Gemini payload boundary, and call/character limits.
-7. Run one capped source in shadow mode, manually inspect every row, proposal, decision,
+6. Run one capped source in shadow mode, manually inspect every row, proposal, decision,
    and log, and keep live automatic publication disabled.
-8. Only after measured live performance, consider a narrowly defined automatic policy
+7. Only after measured live performance, consider a narrowly defined automatic policy
    class through a new forward allowlist migration and separate approval.
-9. Treat production publication, custom domain/DNS, mainland mobile/WeChat validation,
+8. Treat production publication, custom domain/DNS, mainland mobile/WeChat validation,
    and launch as later, separately approved steps.
 
 Relevant runbooks: [initial setup](runbooks/initial-setup.md),
