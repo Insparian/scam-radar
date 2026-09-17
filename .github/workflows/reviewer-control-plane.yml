@@ -1,0 +1,195 @@
+name: Reviewer control plane
+
+run-name: Reviewer ${{ inputs.operation }} from ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Create the empty project or deploy after Access is verified"
+        required: true
+        type: choice
+        options:
+          - provision
+          - deploy
+      confirmation:
+        description: "Type PROVISION REVIEWER PROJECT or DEPLOY PROTECTED REVIEWER"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: scam-radar-reviewer-control-plane
+  cancel-in-progress: false
+
+env:
+  REVIEWER_PROJECT: insparian-scam-radar-reviewer
+  REVIEWER_BRANCH: reviewer
+  REVIEWER_URL: https://reviewer.insparian-scam-radar-reviewer.pages.dev
+
+jobs:
+  provision-empty-project:
+    if: github.ref == 'refs/heads/main' && inputs.operation == 'provision'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: cloudflare-preview
+    steps:
+      - name: Require exact human confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$CONFIRMATION" = "PROVISION REVIEWER PROJECT" || {
+            echo "Confirmation did not match. Cloudflare was unchanged."
+            exit 1
+          }
+      - name: Create the empty Direct Upload project if absent
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          endpoint="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$REVIEWER_PROJECT"
+          response="$RUNNER_TEMP/reviewer-project.json"
+          status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$endpoint")"
+          if [ "$status" = "200" ]; then
+            echo "Reviewer Pages project already exists; no change was made."
+            exit 0
+          fi
+          test "$status" = "404" || {
+            echo "Could not verify the reviewer Pages project; response body withheld."
+            exit 1
+          }
+          create_status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+            --request POST \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"name\":\"$REVIEWER_PROJECT\",\"production_branch\":\"production-disabled\"}" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects")"
+          test "$create_status" = "200" || {
+            echo "Reviewer Pages project creation failed; response body withheld."
+            exit 1
+          }
+          echo "Created an empty reviewer Pages project. No artifact was uploaded."
+      - name: Record the required manual protection step
+        run: |
+          {
+            echo "## Empty reviewer Pages project"
+            echo ""
+            echo "- No artifact uploaded"
+            echo "- Production branch reserved as production-disabled"
+            echo "- Next: enable the Pages preview Access policy in Cloudflare"
+            echo "- Do not deploy until the unauthenticated Access probe passes"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-protected-preview:
+    if: github.ref == 'refs/heads/main' && inputs.operation == 'deploy'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: cloudflare-preview
+      url: https://reviewer.insparian-scam-radar-reviewer.pages.dev
+    env:
+      SCAM_RADAR_ENV: reviewer
+      SCAM_RADAR_COLLECT_ENABLED: "false"
+      SCAM_RADAR_AI_ENABLED: "false"
+      SCAM_RADAR_DEPLOY_ENABLED: "true"
+      SCAM_RADAR_BACKUP_ENABLED: "false"
+      NEXT_PUBLIC_RELEASE_ID: fixture-2026-08-16-001
+    steps:
+      - name: Require exact human confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          test "$CONFIRMATION" = "DEPLOY PROTECTED REVIEWER" || {
+            echo "Confirmation did not match. Nothing was deployed."
+            exit 1
+          }
+      - name: Require the reviewed Access gate
+        env:
+          REVIEWER_ACCESS_READY: ${{ vars.REVIEWER_ACCESS_READY }}
+        run: |
+          test "$REVIEWER_ACCESS_READY" = "true" || {
+            echo "Reviewer Access is not marked ready. No credential was read and nothing was uploaded."
+            exit 1
+          }
+      - name: Check out immutable source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use Node 24
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+          package-manager-cache: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Confirm Offline CI passed for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          result="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" --workflow ci.yml --json conclusion,status --jq 'any(.[]; .status == "completed" and .conclusion == "success")')"
+          test "$result" = "true" || {
+            echo "Offline CI has not passed for this exact commit."
+            exit 1
+          }
+      - name: Verify Access blocks the empty preview before build or upload
+        env:
+          SCAM_RADAR_ALLOW_REVIEWER_SMOKE: "true"
+        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL"
+      - name: Install locked build dependencies
+        run: |
+          python -m pip install uv==0.12.5
+          uv sync --project worker --locked --extra dev
+          npm ci --prefix web
+          cd web
+          npx playwright install --with-deps chromium
+      - name: Verify the offline product boundary
+        run: |
+          make check
+          make test
+          make eval
+      - name: Build and validate the reviewer artifact
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          make demo
+      - name: Upload only the Access-protected preview artifact
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          npx --yes wrangler@4.130.0 pages deploy web/out \
+            --project-name="$REVIEWER_PROJECT" \
+            --branch="$REVIEWER_BRANCH" \
+            --commit-hash="$GITHUB_SHA" \
+            --commit-dirty=false
+      - name: Verify Access still blocks the deployed preview
+        env:
+          SCAM_RADAR_ALLOW_REVIEWER_SMOKE: "true"
+        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL"
+      - name: Record the narrow activation scope
+        run: |
+          {
+            echo "## Protected reviewer preview"
+            echo ""
+            echo "- Cloudflare Access: unauthenticated request blocked before and after upload"
+            echo "- Supabase configuration: public URL and publishable key only"
+            echo "- Real source evidence: 0"
+            echo "- Collection, Gemini, backup, public production deploy, and auto-publish: disabled"
+          } >> "$GITHUB_STEP_SUMMARY"

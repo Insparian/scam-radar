@@ -92,6 +92,12 @@ def test_foundation_query_checks_private_live_policy_allowlist() -> None:
     assert "public.active_live_publication_policies()" not in (supabase_foundation.FOUNDATION_QUERY)
 
 
+def test_foundation_query_requires_reviewer_bootstrap_migration_and_grant() -> None:
+    assert "'20260916000200'" in supabase_foundation.FOUNDATION_QUERY
+    assert "'public.get_reviewer_bootstrap()'" in supabase_foundation.FOUNDATION_QUERY
+    assert "reviewer_bootstrap_only_authenticated" in supabase_foundation.FOUNDATION_QUERY
+
+
 def test_service_role_lockdown_is_forward_only() -> None:
     migration = (
         Path(__file__).parents[3]

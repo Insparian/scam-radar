@@ -28,7 +28,8 @@ select json_build_object(
             '20260816000200',
             '20260816000300',
             '20260816000400',
-            '20260916000100'
+            '20260916000100',
+            '20260916000200'
         ]::text[]
         from supabase_migrations.schema_migrations
         where version in (
@@ -36,7 +37,8 @@ select json_build_object(
             '20260816000200',
             '20260816000300',
             '20260816000400',
-            '20260916000100'
+            '20260916000100',
+            '20260916000200'
         )
     ),
     'one_reviewer', (
@@ -81,6 +83,22 @@ select json_build_object(
         and not has_function_privilege(
             'service_role',
             'public.confirm_policy_publication(uuid,uuid,uuid,bigint,text,text,uuid[],uuid[],text)',
+            'EXECUTE'
+        ),
+    'reviewer_bootstrap_only_authenticated',
+        has_function_privilege(
+            'authenticated',
+            'public.get_reviewer_bootstrap()',
+            'EXECUTE'
+        )
+        and not has_function_privilege(
+            'anon',
+            'public.get_reviewer_bootstrap()',
+            'EXECUTE'
+        )
+        and not has_function_privilege(
+            'service_role',
+            'public.get_reviewer_bootstrap()',
             'EXECUTE'
         ),
     'worker_rpc_only_service_role',
@@ -218,6 +236,12 @@ def verify_foundation() -> None:
             "select public.confirm_policy_publication("
             "null,null,null,null,null,null,null,null,null);"
         ),
+        "anon_reviewer_bootstrap": (
+            "set role anon; select public.get_reviewer_bootstrap();"
+        ),
+        "service_role_reviewer_bootstrap": (
+            "set role service_role; select public.get_reviewer_bootstrap();"
+        ),
     }
     for probe in denied_probes.values():
         run_psql(db_url, probe, expect_success=False)
@@ -240,6 +264,20 @@ def verify_foundation() -> None:
             "authenticated reviewer RPC did not fail at its identity guard"
         )
 
+    bootstrap_guard = run_psql(
+        db_url,
+        "set role authenticated; select public.get_reviewer_bootstrap();",
+        expect_success=False,
+    )
+    if not any(
+        marker in bootstrap_guard.stderr
+        for marker in (
+            "authenticated_reviewer_role_required",
+            "reviewer_identity_required",
+        )
+    ):
+        raise RuntimeError("reviewer bootstrap RPC did not fail at its identity guard")
+
     exporter_guard = run_psql(
         db_url,
         "begin; set local role service_role; "
@@ -252,9 +290,9 @@ def verify_foundation() -> None:
         raise RuntimeError("exporter RPC did not reach its immutable-release guard")
 
     print(
-        "production Supabase foundation ok: migrations=5 reviewer=1 "
+        "production Supabase foundation ok: migrations=6 reviewer=1 "
         "application_rows=0 anon=denied reviewer=guarded worker=scoped "
-        "exporter=scoped live_policy_allowlist=empty"
+        "bootstrap=scoped exporter=scoped live_policy_allowlist=empty"
     )
 
 

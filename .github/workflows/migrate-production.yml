@@ -73,14 +73,15 @@ jobs:
         if: always()
         run: |
           {
-            echo "## Production Supabase foundation"
+            echo "## Production Supabase reviewer migration"
             echo ""
-            echo "- Forward migrations: requested"
+            echo "- Forward migrations through 20260916000200: requested"
             echo "- Reviewer mailbox: withheld"
             echo "- Real source evidence: 0"
             echo "- Collection: disabled"
             echo "- Gemini: disabled"
             echo "- Backup upload: disabled"
-            echo "- Production deployment: disabled"
+            echo "- Reviewer web deployment: handled separately"
+            echo "- Public production deployment: disabled"
             echo "- Live automatic publication allowlist: expected empty"
           } >> "$GITHUB_STEP_SUMMARY"
