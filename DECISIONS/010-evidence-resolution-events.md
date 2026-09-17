@@ -9,4 +9,6 @@
 Rui explicitly approved this decision by replying `proceed` on 2026-09-17.
 
 Implemented and locally verified in `9054d2e`. Production application remains a
-separate mutation checkpoint.
+separate mutation checkpoint. Rui approved that checkpoint on 2026-09-18; protected
+workflow run `35288862213` applied and verified the seventh migration with zero
+application rows.

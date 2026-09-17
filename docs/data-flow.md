@@ -1,6 +1,6 @@
 # Scam Radar V0.1 data flow
 
-**Current state:** Application data remains fixture/local only. The empty Frankfurt Supabase foundation has the sixth reviewer-bootstrap migration; the seventh append-only evidence-resolution migration is verified locally and awaiting separate production approval. The F4 browser configuration is deployed only to a dedicated Cloudflare Access-protected reviewer preview. Unauthenticated blocking, account-member Access, Supabase reviewer login, empty-queue bootstrap, sign-out, and the logged-out route guard are verified end to end. The public fixture preview is unchanged and unconnected to Supabase. Real evidence movement and every other live-data path remain disabled until separately approved.
+**Current state:** Application data remains fixture/local only. The empty Frankfurt Supabase foundation has all seven forward migrations, including the append-only evidence-resolution ledger. The F4 browser configuration is deployed only to a dedicated Cloudflare Access-protected reviewer preview. Unauthenticated blocking, account-member Access, Supabase reviewer login, empty-queue bootstrap, sign-out, and the logged-out route guard are verified end to end. The public fixture preview is unchanged and unconnected to Supabase. Real evidence movement and every other live-data path remain disabled until separately approved.
 
 ## Trust zones
 

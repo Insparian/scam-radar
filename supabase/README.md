@@ -134,5 +134,6 @@ Resolved evidence rows are retained and immutable. The seventh migration adds an
 append-only, one-to-one terminal resolution event for accepted and rejected evidence.
 Pre-existing terminal rows are backfilled as `legacy_unknown` with no invented actor,
 policy, review item, or occurrence time; the insert trigger rejects new
-`legacy_unknown` events after migration. Production remains on six migrations until the
-seventh migration receives its separate production-mutation approval.
+`legacy_unknown` events after migration. The seventh migration was applied to the empty
+production foundation through the protected workflow on 2026-09-18; no application
+data was moved or created.
