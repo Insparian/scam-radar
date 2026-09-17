@@ -21,7 +21,8 @@ begin
         '20260816000300',
         '20260816000400',
         '20260916000100',
-        '20260916000200'
+        '20260916000200',
+        '20260917000100'
     ]::text[] then
         raise exception 'unexpected_migration_set: %', applied_versions;
     end if;
@@ -155,6 +156,7 @@ with calculated_hash as (
     join public.source_item_versions as version
       on version.id = evidence.source_item_version_id
     where evidence.pattern_id = '50000000-0000-4000-8000-000000000001'
+      and evidence.id = '70000000-0000-4000-8000-000000000001'
 )
 update public.pattern_revisions
 set evidence_set_hash = calculated_hash.evidence_set_hash
@@ -240,6 +242,255 @@ exception
         end if;
 end;
 $$;
+
+savepoint policy_resolution_path;
+
+create or replace function private.active_live_publication_policies()
+returns table (policy_version text, policy_hash text, gate_version text)
+language sql
+immutable
+security definer
+set search_path = ''
+as $$
+    values (
+        'local-live-policy'::text,
+        repeat('9', 64)::text,
+        'publication-gate-v0.1'::text
+    );
+$$;
+
+do $$
+declare
+    live_decision_id uuid;
+begin
+    perform set_config(
+        'request.jwt.claims',
+        '{"role":"service_role","sub":"eeeeeeee-0000-4000-8000-000000000001"}',
+        true
+    );
+    perform set_config('request.jwt.claim.role', 'service_role', true);
+    perform set_config(
+        'request.jwt.claim.sub',
+        'eeeeeeee-0000-4000-8000-000000000001',
+        true
+    );
+
+    insert into public.scam_patterns (
+        id,
+        slug,
+        lifecycle_status,
+        first_seen_at,
+        last_seen_at,
+        row_version
+    ) values (
+        '50000000-0000-4000-8000-000000000002',
+        'fixture-policy-resolution',
+        'review_ready',
+        '2026-08-14 01:00:00+00',
+        '2026-08-14 01:00:00+00',
+        1
+    );
+
+    insert into public.pattern_revisions (
+        id,
+        pattern_id,
+        revision_no,
+        schema_version,
+        revision_status,
+        canonical_name,
+        short_name,
+        pattern_type,
+        risk_type,
+        evidence_level,
+        legal_status,
+        public_evidence_label,
+        one_sentence_summary,
+        target_population,
+        contact_channels,
+        impersonated_identities,
+        hooks,
+        common_phrases,
+        pressure_tactics,
+        requested_actions,
+        money_paths,
+        technology_used,
+        warning_signs,
+        what_to_do,
+        regions,
+        first_seen_at,
+        last_seen_at,
+        last_material_change_at,
+        evidence_set_hash,
+        content_hash
+    )
+    select
+        '60000000-0000-4000-8000-000000000002',
+        '50000000-0000-4000-8000-000000000002',
+        1,
+        schema_version,
+        'draft',
+        canonical_name || '（Policy 测试）',
+        short_name,
+        pattern_type,
+        risk_type,
+        evidence_level,
+        legal_status,
+        public_evidence_label,
+        one_sentence_summary,
+        target_population,
+        contact_channels,
+        impersonated_identities,
+        hooks,
+        common_phrases,
+        pressure_tactics,
+        requested_actions,
+        money_paths,
+        technology_used,
+        warning_signs,
+        what_to_do,
+        regions,
+        first_seen_at,
+        last_seen_at,
+        last_material_change_at,
+        repeat('a', 64),
+        repeat('d', 64)
+    from public.pattern_revisions
+    where id = '60000000-0000-4000-8000-000000000001';
+
+    update public.scam_patterns
+    set current_draft_revision_id = '60000000-0000-4000-8000-000000000002'
+    where id = '50000000-0000-4000-8000-000000000002';
+
+    insert into public.review_items (
+        id,
+        review_type,
+        target_id,
+        status,
+        priority,
+        evidence_level_at_creation,
+        reason_codes,
+        candidate_schema_version,
+        candidate_payload,
+        candidate_hash,
+        base_row_version,
+        dedupe_key
+    ) values (
+        'a0000000-0000-4000-8000-000000000002',
+        'pattern_update',
+        '50000000-0000-4000-8000-000000000002',
+        'pending',
+        50,
+        'A',
+        array['local_policy_resolution'],
+        'review-candidate-v1',
+        '{"fixture":true,"policy_resolution":true}'::jsonb,
+        repeat('5', 64),
+        1,
+        'fixture:policy-resolution:v1'
+    );
+
+    insert into public.pattern_evidence (
+        id,
+        pattern_id,
+        source_item_version_id,
+        evidence_type,
+        origin_group_key,
+        evidence_family_id,
+        claim_summary,
+        acceptance_status,
+        last_verified_at,
+        source_status
+    ) values
+    (
+        '70000000-0000-4000-8000-000000000003',
+        '50000000-0000-4000-8000-000000000002',
+        '30000000-0000-4000-8000-000000000001',
+        'official_notice',
+        'fixture-policy-origin-accepted',
+        'd0000000-0000-4000-8000-000000000003',
+        'Policy accepted evidence fixture.',
+        'proposed',
+        '2026-08-15 08:00:00+00',
+        'available'
+    ),
+    (
+        '70000000-0000-4000-8000-000000000004',
+        '50000000-0000-4000-8000-000000000002',
+        '30000000-0000-4000-8000-000000000002',
+        'official_notice',
+        'fixture-policy-origin-rejected',
+        null,
+        'Policy rejected evidence fixture.',
+        'proposed',
+        '2026-08-15 07:00:00+00',
+        'available'
+    );
+
+    live_decision_id := public.record_policy_decision(
+        'a0000000-0000-4000-8000-000000000002',
+        '60000000-0000-4000-8000-000000000002',
+        'public_database',
+        'local-live-policy',
+        repeat('9', 64),
+        repeat('8', 64),
+        'publication-gate-v0.1',
+        'eligible_for_policy',
+        'safe_to_automate',
+        'safe_to_automate',
+        'live',
+        true,
+        false,
+        array['local_live_policy'],
+        'b0000000-0000-4000-8000-000000000001',
+        0.99000
+    );
+
+    perform set_config(
+        'scam_radar.policy_execution_decision_id',
+        live_decision_id::text,
+        true
+    );
+
+    perform private.apply_policy_evidence_decisions(
+        live_decision_id,
+        '50000000-0000-4000-8000-000000000002',
+        '60000000-0000-4000-8000-000000000002',
+        array['70000000-0000-4000-8000-000000000003']::uuid[],
+        array['70000000-0000-4000-8000-000000000004']::uuid[]
+    );
+
+    if (
+        select count(*)
+        from public.evidence_resolution_events
+        where policy_decision_id = live_decision_id
+          and authority_path = 'policy'
+          and actor_id is null
+          and review_item_id = 'a0000000-0000-4000-8000-000000000002'
+          and reason = 'policy_decision:' || live_decision_id::text
+          and reason_codes = array['local_live_policy']
+          and occurred_at is not null
+    ) <> 2 then
+        raise exception 'policy_evidence_resolution_events_missing';
+    end if;
+
+    if not exists (
+        select 1
+        from public.evidence_resolution_events
+        where pattern_evidence_id = '70000000-0000-4000-8000-000000000003'
+          and outcome = 'accepted'
+    ) or not exists (
+        select 1
+        from public.evidence_resolution_events
+        where pattern_evidence_id = '70000000-0000-4000-8000-000000000004'
+          and outcome = 'rejected'
+    ) then
+        raise exception 'policy_evidence_resolution_outcomes_missing';
+    end if;
+end;
+$$;
+
+rollback to savepoint policy_resolution_path;
+release savepoint policy_resolution_path;
 
 do $$
 begin
@@ -341,7 +592,7 @@ begin
             repeat('2', 64),
             repeat('f', 64),
             array['70000000-0000-4000-8000-000000000001']::uuid[],
-            '{}'::uuid[],
+            array['70000000-0000-4000-8000-000000000002']::uuid[],
             'invalid service confirmation'
         );
         raise exception 'expected_service_identity_rejection';
@@ -402,7 +653,7 @@ begin
             repeat('2', 64),
             repeat('f', 64),
             array['70000000-0000-4000-8000-000000000001']::uuid[],
-            '{}'::uuid[],
+            array['70000000-0000-4000-8000-000000000002']::uuid[],
             'stale local test'
         );
         raise exception 'expected_stale_row_version_rejection';
@@ -421,7 +672,7 @@ begin
         repeat('2', 64),
         repeat('f', 64),
         array['70000000-0000-4000-8000-000000000001']::uuid[],
-        '{}'::uuid[],
+        array['70000000-0000-4000-8000-000000000002']::uuid[],
         'Local transaction proves the human exception path.'
     );
 
@@ -452,6 +703,55 @@ begin
     ) then
         raise exception 'human_publish_request_missing';
     end if;
+
+    if not exists (
+        select 1
+        from public.evidence_resolution_events
+        where pattern_evidence_id = '70000000-0000-4000-8000-000000000001'
+          and outcome = 'accepted'
+          and authority_path = 'human'
+          and actor_id = 'eeeeeeee-0000-4000-8000-000000000001'
+          and policy_decision_id = decision_id
+          and review_item_id = 'a0000000-0000-4000-8000-000000000001'
+          and reason = 'Local transaction proves the human exception path.'
+          and reason_codes = array['shadow_would_publish']
+          and occurred_at is not null
+    ) then
+        raise exception 'human_evidence_resolution_event_missing';
+    end if;
+
+    if not exists (
+        select 1
+        from public.evidence_resolution_events
+        where pattern_evidence_id = '70000000-0000-4000-8000-000000000002'
+          and outcome = 'rejected'
+          and authority_path = 'human'
+          and actor_id = 'eeeeeeee-0000-4000-8000-000000000001'
+          and policy_decision_id = decision_id
+          and review_item_id = 'a0000000-0000-4000-8000-000000000001'
+          and reason = 'Local transaction proves the human exception path.'
+          and reason_codes = array['shadow_would_publish']
+          and occurred_at is not null
+    ) then
+        raise exception 'human_rejected_evidence_resolution_event_missing';
+    end if;
+end;
+$$;
+
+do $$
+begin
+    begin
+        update public.evidence_resolution_events
+        set reason = 'changed'
+        where pattern_evidence_id = '70000000-0000-4000-8000-000000000001';
+        raise exception 'expected_evidence_resolution_immutability_rejection';
+    exception
+        when others then
+            if sqlstate <> '55000'
+               or sqlerrm <> 'evidence_resolution_events_is_append_only' then
+                raise exception 'wrong_evidence_resolution_immutability_error [%] %', sqlstate, sqlerrm;
+            end if;
+    end;
 end;
 $$;
 

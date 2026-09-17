@@ -100,6 +100,70 @@ update public.source_items
 set current_version_id = '30000000-0000-4000-8000-000000000001'
 where id = '20000000-0000-4000-8000-000000000001';
 
+insert into public.source_items (
+    id,
+    source_id,
+    external_id,
+    identity_key,
+    canonical_url,
+    first_seen_at,
+    last_seen_at,
+    created_at,
+    updated_at
+) values (
+    '20000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000001',
+    'fixture-alert-002',
+    'fixture-alert-002',
+    'https://alerts.example.invalid/notices/fixture-alert-002',
+    '2026-08-15 07:00:00+00',
+    '2026-08-15 07:00:00+00',
+    '2026-08-15 07:00:00+00',
+    '2026-08-15 07:00:00+00'
+);
+
+insert into public.source_item_versions (
+    id,
+    source_item_id,
+    url,
+    canonical_url,
+    title,
+    author,
+    language,
+    published_at,
+    fetched_at,
+    clean_text,
+    text_truncated,
+    content_hash,
+    raw_html_hash,
+    origin_group_key,
+    processing_status,
+    attempt_count,
+    created_at
+) values (
+    '30000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000002',
+    'https://alerts.example.invalid/notices/fixture-alert-002',
+    'https://alerts.example.invalid/notices/fixture-alert-002',
+    '与本案无关的合成材料',
+    '虚构市公安宣传处',
+    'zh-CN',
+    '2026-08-14 00:00:00+00',
+    '2026-08-15 07:00:00+00',
+    '测试材料：这条合成材料与当前骗局模式无关，应由审核者明确拒绝。',
+    false,
+    repeat('6', 64),
+    repeat('7', 64),
+    'fixture-origin-002',
+    'processed',
+    1,
+    '2026-08-15 07:00:01+00'
+);
+
+update public.source_items
+set current_version_id = '30000000-0000-4000-8000-000000000002'
+where id = '20000000-0000-4000-8000-000000000002';
+
 insert into public.ai_artifacts (
     id,
     source_item_version_id,
@@ -268,6 +332,36 @@ insert into public.pattern_evidence (
     'proposed',
     '2026-08-15 08:00:00+00',
     '2026-09-14 08:00:00+00',
+    'available',
+    '2026-08-15 08:00:03+00'
+);
+
+insert into public.pattern_evidence (
+    id,
+    pattern_id,
+    source_item_version_id,
+    evidence_type,
+    origin_group_key,
+    claim_summary,
+    event_date,
+    region,
+    acceptance_status,
+    last_verified_at,
+    recheck_due_at,
+    source_status,
+    created_at
+) values (
+    '70000000-0000-4000-8000-000000000002',
+    '50000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000002',
+    'official_notice',
+    'fixture-origin-002',
+    '这条合成材料与当前模式无关，只用于验证拒绝事件的来源记录。',
+    '2026-08-14',
+    'CN-XX',
+    'proposed',
+    '2026-08-15 07:00:00+00',
+    '2026-09-14 07:00:00+00',
     'available',
     '2026-08-15 08:00:03+00'
 );

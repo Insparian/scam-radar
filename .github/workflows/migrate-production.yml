@@ -75,7 +75,7 @@ jobs:
           {
             echo "## Production Supabase reviewer migration"
             echo ""
-            echo "- Forward migrations through 20260916000200: requested"
+            echo "- Forward migrations through 20260917000100: requested"
             echo "- Reviewer mailbox: withheld"
             echo "- Real source evidence: 0"
             echo "- Collection: disabled"

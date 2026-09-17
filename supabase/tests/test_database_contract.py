@@ -23,6 +23,7 @@ EXPECTED_TABLES = {
     "pattern_revisions",
     "scam_aliases",
     "pattern_evidence",
+    "evidence_resolution_events",
     "evidence_spans",
     "evidence_claim_support",
     "review_items",
@@ -137,6 +138,17 @@ class DatabaseContractTest(unittest.TestCase):
                 "source_status",
                 "acceptance_path",
                 "acceptance_policy_decision_id",
+            },
+            "evidence_resolution_events": {
+                "pattern_evidence_id",
+                "outcome",
+                "authority_path",
+                "actor_id",
+                "policy_decision_id",
+                "review_item_id",
+                "reason",
+                "reason_codes",
+                "occurred_at",
             },
             "review_items": {
                 "candidate_hash",
@@ -360,6 +372,8 @@ class DatabaseContractTest(unittest.TestCase):
             "scam_aliases_protect_approved_revision",
             "evidence_claim_support_protect_approved_revision",
             "pattern_evidence_protect_resolution",
+            "evidence_resolution_events_validate_insert",
+            "evidence_resolution_events_append_only",
             "evidence_spans_append_only",
             "review_events_append_only",
             "review_events_require_human_actor",
@@ -383,6 +397,20 @@ class DatabaseContractTest(unittest.TestCase):
             "rename to publication_changes_require_authorized_request",
             self.migrations_lower,
         )
+        self.assertIn(
+            "legacy_resolution_events_are_migration_only", self.migrations_lower
+        )
+        self.assertIn("evidence_resolution_context_required", self.migrations_lower)
+        self.assertIn(
+            "pre_migration_resolution_provenance_unavailable", self.migrations_lower
+        )
+        legacy_backfill = self.migrations_lower.index(
+            "insert into public.evidence_resolution_events"
+        )
+        insert_guard = self.migrations_lower.index(
+            "create trigger evidence_resolution_events_validate_insert"
+        )
+        self.assertLess(legacy_backfill, insert_guard)
 
     def test_deduplication_and_cross_row_integrity_are_explicit(self) -> None:
         required_fragments = {
