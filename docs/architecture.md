@@ -1,6 +1,6 @@
 # Scam Radar V0.1 architecture
 
-**Status:** Offline-first implementation architecture, updated 2026-09-16. The empty Frankfurt Supabase foundation exists and reviewer Auth/RPC code is implemented but not deployed. External collection, Gemini, live evidence movement, encrypted R2 backup, production publication, DNS, and telemetry are not activated.
+**Status:** Offline-first implementation architecture, updated 2026-09-17. The empty Frankfurt Supabase foundation and sixth reviewer-bootstrap migration are active. A dedicated Cloudflare Access-protected reviewer preview is deployed with public Supabase browser configuration; its end-to-end authenticated login smoke test remains pending. External collection, Gemini, live evidence movement, encrypted R2 backup, public production publication, DNS, and telemetry are not activated.
 
 ## Outcome and non-negotiable invariants
 
@@ -137,7 +137,7 @@ See [ADR-004](decisions/004-gemini-provider-boundary.md).
 
 | Mode | Allowed | Forbidden |
 |---|---|---|
-| Offline development (current) | Approved package registries during bootstrap, localhost, fixtures, recorded AI responses, local Supabase containers, static build, empty managed schema verification | Real sources, Gemini, production evidence movement, reviewer UI deployment, DNS, telemetry |
+| Offline development + private reviewer control plane (current) | Approved package registries during bootstrap, localhost, fixtures, recorded AI responses, local Supabase containers, empty managed schema verification, and the Access-protected reviewer Auth/RPC surface | Real sources, Gemini, production evidence movement, public production deployment, DNS, telemetry |
 | Shadow activation (later approval) | Explicitly approved/capped sources and Gemini, production persistence, policy shadow decisions, private exception review | Live automatic authorization, public deploy, or DNS unless separately enabled |
 | Production (later launch approval) | Scheduled capped collection, Policy Engine shadow routing, human exception/confirmation, exact release Direct Upload | Live automatic authorization without a separate narrowly scoped activation, automatic paid fallback, whole-web crawling |
 

@@ -17,3 +17,11 @@
 - Real-source collection, Gemini, evidence ingestion, release export, public launch, R2 backup, DNS, telemetry, and live automatic publication remain disabled and separately gated.
 
 Rui explicitly approved this decision by replying `proceed` on 2026-09-16.
+
+## Activation record
+
+- Production migration and boundary verification completed in GitHub Actions run `35176908483` on 2026-09-16. Production remained at zero application rows, with one enabled reviewer and an empty live-policy allowlist.
+- The empty Direct Upload Pages project was provisioned in run `35177105741`, with `production-disabled` as its production branch.
+- Rui separately approved creating the Cloudflare Access restriction, and the unauthenticated reviewer alias was verified to redirect to the Access login before deployment.
+- Rui separately approved deployment on 2026-09-17. Run `35183748991` built commit `fe14468`, uploaded 99 static files only to the `reviewer` preview branch, and verified the Access redirect again after upload.
+- The remaining interactive smoke test is Cloudflare Access login followed by Supabase password login, empty-queue bootstrap, and sign-out. No real evidence or decision mutation is needed for that test.

@@ -2,7 +2,11 @@
 
 ## Current status
 
-A fixture-only Cloudflare preview is active at <https://preview.insparian-scam-radar.pages.dev/> behind the manual `Cloudflare Pages fixture preview` workflow. It displays its test-data warning and sends `X-Robots-Tag: noindex, nofollow`. Production deployment, custom domain, and rollback remain unverified and require launch approval. The post-upload smoke check retries only transient reachability failures during the short Pages alias propagation window; release-ID mismatch still fails immediately.
+A fixture-only Cloudflare preview is active at <https://preview.insparian-scam-radar.pages.dev/> behind the manual `Cloudflare Pages fixture preview` workflow. It displays its test-data warning and sends `X-Robots-Tag: noindex, nofollow`.
+
+A separate reviewer build is active at <https://reviewer.insparian-scam-radar-reviewer.pages.dev/> on the `reviewer` preview branch. The `Reviewer control plane` workflow refuses to upload unless the exact commit passed Offline CI and an unauthenticated preflight is redirected to Cloudflare Access; it repeats that Access probe after upload. The Pages production branch remains `production-disabled`, so this is not a public production deployment. The build contains only the public Supabase URL and publishable key, never a database URL or secret key. Authenticated login, empty-queue bootstrap, and sign-out still require an interactive smoke test by the reviewer.
+
+Public production deployment, custom domain, and rollback remain unverified and require launch approval. The fixture post-upload smoke check retries only transient reachability failures during the short Pages alias propagation window; release-ID mismatch still fails immediately.
 
 ## Offline release rehearsal
 
@@ -27,7 +31,15 @@ Direct Upload and Git integration are different project types; do not enable Clo
 
 Cloudflare Pages Free is selected because this site is purely static: current documented limits allow 500 builds per month and static asset requests are free. Recheck these terms immediately before activation, set usage notifications where available, and do not enable an automatic paid fallback. Repository ownership may be personal or organizational; the deployment workflow, not a Git-host integration, remains the only publication authority.
 
-The fixture preview uses Direct Upload, so the build runs in GitHub Actions rather than Cloudflare's Pages build service. It uses one of the account's current 100 Pages project slots. With no Pages Functions, its static requests do not count against the account's Workers request allowance. The Pages Write token is still account-scoped and can affect other Pages projects in that account, so it must have no Workers, DNS, R2, billing, or membership permissions and must remain scoped to the `cloudflare-preview` GitHub environment.
+The fixture and reviewer previews use Direct Upload, so their builds run in GitHub Actions rather than Cloudflare's Pages build service. They use two of the account's current Pages project slots. With no Pages Functions, their static requests do not count against the account's Workers request allowance. The Pages Write token is still account-scoped and can affect other Pages projects in that account, so it must have no Workers, DNS, R2, billing, or membership permissions and must remain scoped to the `cloudflare-preview` GitHub environment.
+
+## Reviewer preview rollback
+
+1. Treat Access failure as a stop condition: do not upload if the unauthenticated probe does not redirect to the expected Cloudflare Access host.
+2. To stop the browser control plane without changing the database, disable the reviewer Pages deployment or remove its public Supabase build variables, then verify the URL no longer serves the configured reviewer app.
+3. To revoke decision authority immediately, disable the matching `admin_users` row and revoke the Auth session. This preserves audit history.
+4. Do not reverse migration `20260916000200`; fix database behavior with a new forward migration.
+5. Do not repoint the Pages production branch, add custom DNS, or copy reviewer configuration into the public fixture project as a rollback shortcut.
 
 ## Rollback
 

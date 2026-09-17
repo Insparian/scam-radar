@@ -1,9 +1,9 @@
 # Scam Radar implementation handoff
 
-**As of:** 2026-09-16
+**As of:** 2026-09-17
 **Repository:** <https://github.com/Insparian/scam-radar>  
 **Branch:** `main`  
-**Verified implementation baseline:** `90a7563` (`Connect reviewer UI to Supabase Auth`)
+**Verified implementation baseline:** `fe14468` (`Add protected reviewer activation path`)
 
 This file is the continuity note for starting a new Codex conversation. It does not
 override `AGENTS.md` or [North Star](North%20Star.md); read those first.
@@ -22,15 +22,18 @@ prebuilt static `web/out` directory; it does not enable Cloudflare Workers, DNS,
 AI, analytics, or telemetry.
 
 An empty Supabase Free production foundation exists in Frankfurt (`eu-central-1`).
-Five forward migrations are applied there, one project-specific Auth user is mapped
+All six forward migrations are applied there, one project-specific Auth user is mapped
 to an enabled reviewer, and production probes confirm zero application rows plus
 anon/authenticated/service-role table isolation.
 
-The repository now contains the approved reviewer login/Auth implementation: a
-password login, route guard, narrow reviewer-bootstrap RPC, and durable decision RPC
-calls. The sixth migration and Auth-enabled web build have passed local and CI
-verification but have **not** been applied or deployed to production. The live fixture
-preview therefore remains fixture-only and does not initialize Supabase.
+The approved reviewer login/Auth implementation is deployed separately at
+<https://reviewer.insparian-scam-radar-reviewer.pages.dev/>. Cloudflare Access blocks
+unauthenticated requests before Pages serves the app, then Supabase Auth and narrow
+RPCs enforce reviewer authority. The build is only on the `reviewer` preview branch;
+the Pages production branch remains `production-disabled`. The public fixture preview
+is unchanged and does not initialize Supabase. The remaining activation check is the
+interactive Cloudflare Access + Supabase login, empty-queue bootstrap, and sign-out
+smoke test.
 
 ## Completed
 
@@ -57,7 +60,7 @@ preview therefore remains fixture-only and does not initialize Supabase.
 - [x] The exposed older Cloudflare Pages token was revoked after the replacement
   deployment passed. The Cloudflare account token list now contains only the active
   dated replacement for this deployment path.
-- [x] Empty Frankfurt Supabase production foundation, five migration versions, one
+- [x] Empty Frankfurt Supabase production foundation, six migration versions, one
   enabled reviewer, RPC-only worker/exporter boundaries, and an empty live automatic
   publication allowlist verified against the managed database and through the
   protected manual GitHub workflow.
@@ -67,6 +70,13 @@ preview therefore remains fixture-only and does not initialize Supabase.
 - [x] Reviewer bootstrap excludes raw clean text, evidence spans, and candidate
   payloads. Public entry chunks are checked so they do not directly load the Auth or
   reviewer client.
+- [x] Dedicated Direct Upload reviewer Pages project with a deliberately unusable
+  production branch and a manual, exact-confirmation deployment workflow.
+- [x] Cloudflare Access restriction on preview deployments. The workflow probes the
+  Access redirect before and after every reviewer upload.
+- [x] Public Supabase URL and publishable key stored only as protected GitHub
+  environment values and compiled only into the private reviewer build. No database
+  URL, secret key, reviewer email, or password enters the artifact.
 
 ## Verification evidence
 
@@ -108,6 +118,19 @@ Earlier verified baseline at commit `52936a7`:
 - Post-push fixture check on 2026-09-16: HTTP 200, `X-Robots-Tag: noindex,
   nofollow`, and release ID `fixture-2026-08-16-001`; the Auth implementation push did
   not deploy or alter the fixture preview.
+- Reviewer activation preparation at `fe14468`: `make check` passed; `make test`
+  passed 100 Python/database tests, 22 web unit tests, and 4 Playwright tests; all 100
+  recorded eval cases passed. GitHub Offline CI run `35176507843` passed both the
+  application and from-zero PostgreSQL contracts.
+- Protected Production Supabase run `35176908483` applied migration
+  `20260916000200`, reauthorized the reviewer identity, and passed the production
+  role/RPC boundary probes with zero application rows and an empty live-policy
+  allowlist.
+- Reviewer project provision run `35177105741` created the empty Direct Upload Pages
+  project with `production-disabled` as its production branch.
+- Reviewer deployment run `35183748991` built commit `fe14468`, uploaded 99 files only
+  to the `reviewer` preview branch, and passed unauthenticated Cloudflare Access probes
+  both before and after upload. A separate local probe also passed after completion.
 
 ## Credential state
 
@@ -129,17 +152,18 @@ Earlier verified baseline at commit `52936a7`:
 
 ## External-boundary status
 
-Only the fixture preview paths F6/F7 are active for application traffic. Package
-registry access F0 is allowed, and fixture search F8 remains browser-local. F3 has
-been provisioned only as an empty five-migration schema plus one reviewer identity.
-F4 is implemented and verified in code, but its sixth migration, browser
-configuration, and deployment are not active. The following live scopes remain
-disabled and require a fresh Decision Checkpoint plus Rui's explicit `proceed`:
+The fixture preview paths F6/F7 remain active for public application traffic. Package
+registry access F0 is allowed, and fixture search F8 remains browser-local. F3 remains
+an empty six-migration schema plus one reviewer identity. The F4 reviewer control
+plane is active only on the Access-protected preview; its unauthenticated boundary is
+verified and its authenticated interactive smoke test is pending. The following live
+scopes remain disabled and require a fresh Decision Checkpoint plus Rui's explicit
+`proceed`:
 
 - F1 real-source discovery/fetching;
 - F2 Gemini/Google processing;
-- F3 production Supabase writes;
-- F4 production reviewer Auth/actions;
+- F3 real evidence/application writes beyond the approved empty reviewer control-plane
+  checks;
 - F5 production release export;
 - F9 encrypted private R2 backups;
 - custom-domain/DNS activation; and
@@ -151,36 +175,12 @@ it. Keep all source entries disabled, all collection/AI/deploy kill switches off
 
 ## Next implementation sequence
 
-The production reviewer login/Auth slice is implemented and verified, but deliberately
-inactive. The next decision is not more Auth code; it is where and how to expose the
-private control plane without turning the public fixture preview into a production
-admin endpoint. Real-source collection remains later and separately gated.
+The reviewer control plane is deployed behind Access, while real-source collection
+remains later and separately gated.
 
-### Pending Decision Checkpoint: activate the reviewer control plane
-
-**Status:** Proposed but not approved. Do not apply the sixth production migration,
-configure a deployed build, or deploy the reviewer UI until Rui explicitly replies
-`proceed` to this checkpoint.
-
-- **What:** Apply migration `20260916000200`, deploy the Auth-enabled reviewer build to
-  a dedicated access-restricted Pages target, and smoke-test password login, queue
-  bootstrap, sign-out, and the fail-closed permission path. Keep the existing public
-  fixture preview unconnected to Supabase.
-- **Why now:** The application and from-zero database contracts pass, so activation can
-  test the real operator path without mixing in live source data.
-- **Problem it solves:** The reviewer implementation exists only in code; the operator
-  still cannot use the product to sign in or persist decisions.
-- **Alternative considered:** Add the production public URL/key to the existing public
-  fixture preview. Do not choose this: the values are not secrets, but it would mix a
-  deliberately fixture-only public surface with the production control plane and make
-  the environment boundary harder to understand and revoke.
-- **North Star check:** A separately restricted control plane preserves least privilege
-  and keeps public search static/local. The tension is an additional hosted surface and
-  an extra access layer that must remain simple for the single reviewer.
-
-1. Decide the reviewer activation checkpoint above, including the exact Pages target,
-   access restriction, public environment-variable custody, rollback, and smoke-test
-   route. Do not reuse the fixture-only deployment by default.
+1. Complete the interactive reviewer smoke test: Cloudflare Access login, Supabase
+   password login, empty-queue bootstrap, and sign-out. Do not enter credentials into
+   chat or logs.
 2. Before accepting live evidence, add a forward, append-only evidence-resolution
    event migration so rejected evidence retains honest actor/policy provenance. Do
    not invent historical reviewers or timestamps.
@@ -205,11 +205,11 @@ Relevant runbooks: [initial setup](runbooks/initial-setup.md),
 ## Start the next conversation with this
 
 > Read `AGENTS.md`, `docs/North Star.md`, and `docs/HANDOFF.md` completely. Verify the
-> working tree, latest GitHub CI, and fixture-preview health. Continue with the first
-> item in `Next implementation sequence`. The reviewer control-plane activation
-> Decision Checkpoint is proposed but not approved: do not apply the sixth production
-> migration, configure a deployed build, or deploy it until I explicitly reply
-> `proceed` in this conversation. Do not activate real collection, Gemini,
+> working tree, latest GitHub CI, fixture-preview health, and the protected reviewer
+> preview. Continue with the first item in `Next implementation sequence`. The sixth
+> production migration and Access-protected reviewer branch preview are active; the
+> interactive Access + Supabase login/empty-queue/sign-out smoke test is still pending.
+> Do not activate real collection, Gemini,
 > production Supabase data movement, R2 backups, DNS, production publication, or live
 > automatic publication without the repository's Decision Checkpoint and my explicit
 > `proceed`. Do not spawn sub-agents unless I explicitly ask.
