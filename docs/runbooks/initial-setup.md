@@ -92,7 +92,7 @@ Only after approval:
    `admin_users`. Do not put the reviewer address in a workflow input, log, issue, or
    repository file.
 4. Prove anon/reviewer/worker/exporter boundaries, append-only policy decisions, distinct policy/human provenance, shadow-decision rejection, and an empty exact-policy activation allowlist with production-safe checks.
-5. Before accepting live evidence, add the forward append-only evidence-resolution event migration so rejected evidence retains honest actor/policy provenance; never invent a historical reviewer or timestamp.
+5. Apply the verified forward append-only evidence-resolution event migration before accepting live evidence. It preserves honest actor/policy provenance for accepted and rejected outcomes and labels any pre-existing terminal row `legacy_unknown` without inventing a reviewer or timestamp.
 6. Contract-test one explicit mapping from the database v2 export to every required public-web presentation field; do not activate a build that still depends on fixture-only copy.
 7. Keep collection, AI, backup, and deploy kill switches off.
 8. Run one approved source with strict caps; inspect every row/proposal/log manually.

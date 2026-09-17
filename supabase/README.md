@@ -20,6 +20,10 @@ without Docker, PostgreSQL, Supabase, network access, or credentials.
 - `20260916000200_reviewer_bootstrap_rpc.sql`: one authenticated, enabled-reviewer read
   boundary for queue, draft, public-database policy, Heat, and evidence metadata. It
   deliberately excludes raw source text and evidence spans.
+- `20260917000100_evidence_resolution_events.sql`: one append-only resolution event for
+  every terminal accepted/rejected evidence transition, written atomically with the
+  state change and bound to honest human, live-policy, or migration-only legacy
+  authority.
 
 The Evidence Gate calculates `evidence_set_hash` as SHA-256 over accepted evidence,
 ordered by evidence UUID. Each element is serialized as:
@@ -41,8 +45,11 @@ pipeline run. Model confidence may only downgrade `safe_to_automate` to
 `review_required`; a non-eligible Evidence Gate must remain `blocked`.
 
 Human provenance uses `accepted_by`/`approved_by` plus a real `review_event`. Policy
-provenance uses a `policy_decision_id` and leaves human identity columns null. V0.1 can
-record `shadow` decisions and an authenticated reviewer can confirm any non-blocked
+provenance uses a `policy_decision_id` and leaves human identity columns null. Both
+accepted and rejected evidence also receive exactly one append-only
+`evidence_resolution_events` row in the same transaction, including outcome, reason,
+reason codes, decision/review context, and the correct human or policy authority. V0.1
+can record `shadow` decisions and an authenticated reviewer can confirm any non-blocked
 shadow result through `confirm_policy_publication`. The same human-exception transaction
 accepts an active future live `review_required` result, but never a blocked result or a
 live policy-authorized safe result. `apply_live_policy_publication` is present so
@@ -123,9 +130,9 @@ A safe merge must first construct a reviewed destination draft with its exact ev
 set and claim mappings. That workflow belongs to the Review Queue implementation; the
 database will not perform a lossy evidence reassignment as a placeholder.
 
-Resolved evidence rows are retained and immutable, but this migration does not yet add
-an append-only event for the actor/policy that rejected evidence. Accepted evidence has
-its human/policy provenance; rejected rows only retain their terminal status. Before
-live-data activation, add a forward `evidence_resolution_events` migration and represent
-any pre-migration row honestly as `legacy_unknown` rather than inventing an actor or
-timestamp.
+Resolved evidence rows are retained and immutable. The seventh migration adds an
+append-only, one-to-one terminal resolution event for accepted and rejected evidence.
+Pre-existing terminal rows are backfilled as `legacy_unknown` with no invented actor,
+policy, review item, or occurrence time; the insert trigger rejects new
+`legacy_unknown` events after migration. Production remains on six migrations until the
+seventh migration receives its separate production-mutation approval.

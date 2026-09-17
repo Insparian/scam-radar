@@ -7,3 +7,6 @@
 - **North Star check:** This directly supports Evidence before accusation, AI not owning factual authority, and traceable public claims. The cost is another immutable ledger and stricter transactional checks, which is appropriate before the first live evidence enters production.
 
 Rui explicitly approved this decision by replying `proceed` on 2026-09-17.
+
+Implemented and locally verified in `9054d2e`. Production application remains a
+separate mutation checkpoint.

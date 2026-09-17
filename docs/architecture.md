@@ -1,6 +1,6 @@
 # Scam Radar V0.1 architecture
 
-**Status:** Offline-first implementation architecture, updated 2026-09-17. The empty Frankfurt Supabase foundation and sixth reviewer-bootstrap migration are active. A dedicated Cloudflare Access-protected reviewer preview is deployed, and its Access, Supabase Auth, empty-queue bootstrap, sign-out, and logged-out route-guard paths have passed end-to-end verification. External collection, Gemini, live evidence movement, encrypted R2 backup, public production publication, DNS, and telemetry are not activated.
+**Status:** Offline-first implementation architecture, updated 2026-09-17. The empty Frankfurt Supabase foundation and sixth reviewer-bootstrap migration are active. The seventh append-only evidence-resolution migration is implemented and verified locally but is not yet applied to production. A dedicated Cloudflare Access-protected reviewer preview is deployed, and its Access, Supabase Auth, empty-queue bootstrap, sign-out, and logged-out route-guard paths have passed end-to-end verification. External collection, Gemini, live evidence movement, encrypted R2 backup, public production publication, DNS, and telemetry are not activated.
 
 ## Outcome and non-negotiable invariants
 
@@ -97,6 +97,7 @@ Database protection is layered:
 - enabled `admin_users` authorization in human exception RPCs;
 - mandatory Policy Decision provenance for the human exception RPC, with legacy direct approval RPCs revoked;
 - append-only `policy_decisions` with separate policy and human provenance;
+- append-only `evidence_resolution_events` that atomically preserve every accepted or rejected outcome, reason, time, and human/policy authority; pre-migration terminal rows remain explicitly `legacy_unknown`;
 - a narrow policy verification RPC that rejects shadow decisions and remains activation-gated off in V0.1; a later activation must bind the exact approved policy version/hash and Evidence Gate version, never a free-standing boolean;
 - optimistic `row_version` checks;
 - trigger-enforced verified-revision/release immutability;

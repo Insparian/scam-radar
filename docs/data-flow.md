@@ -1,6 +1,6 @@
 # Scam Radar V0.1 data flow
 
-**Current state:** Application data remains fixture/local only. The empty Frankfurt Supabase foundation now has the sixth reviewer-bootstrap migration, and the F4 browser configuration is deployed only to a dedicated Cloudflare Access-protected reviewer preview. Unauthenticated blocking, account-member Access, Supabase reviewer login, empty-queue bootstrap, sign-out, and the logged-out route guard are verified end to end. The public fixture preview is unchanged and unconnected to Supabase. Real evidence movement and every other live-data path remain disabled until separately approved.
+**Current state:** Application data remains fixture/local only. The empty Frankfurt Supabase foundation has the sixth reviewer-bootstrap migration; the seventh append-only evidence-resolution migration is verified locally and awaiting separate production approval. The F4 browser configuration is deployed only to a dedicated Cloudflare Access-protected reviewer preview. Unauthenticated blocking, account-member Access, Supabase reviewer login, empty-queue bootstrap, sign-out, and the logged-out route guard are verified end to end. The public fixture preview is unchanged and unconnected to Supabase. Real evidence movement and every other live-data path remain disabled until separately approved.
 
 ## Trust zones
 
@@ -119,6 +119,7 @@ Policy and human verification are atomic and have distinct provenance:
 - `record_policy_decision` stores the immutable rules outcome, effective decision, mode, hashes, reason codes, and any one-way model-confidence downgrade.
 - `confirm_policy_publication` requires `auth.uid()` plus an enabled admin and is the only usable V0.1 confirmation path.
 - `apply_live_policy_publication` requires an eligible live policy decision, matching content/input hashes, and an exact database allowlist tuple of approved `policy_version + policy_hash + gate_version`. That allowlist is empty in V0.1; a boolean flag alone can never activate publication.
+- Every accepted or rejected evidence transition writes one append-only `evidence_resolution_events` record in the same transaction. Human events retain the reviewer, decision note, policy reason codes, and review context; policy events retain the exact authorized Policy Decision and no human identity. Historical terminal rows that predate the ledger are labelled `legacy_unknown` without invented actors or timestamps.
 - Legacy direct approval RPCs are revoked from every API role; even an authenticated reviewer must arrive through a non-blocked Policy Decision and the exception RPC.
 
 If actor/decision authority, stale version, Evidence Gate, required claim support, risk/legal wording, hash, or audit insertion fails, no verified revision is created. A generic worker credential cannot impersonate a reviewer, and a shadow decision cannot satisfy the future live policy transaction.

@@ -3,7 +3,7 @@
 **As of:** 2026-09-17
 **Repository:** <https://github.com/Insparian/scam-radar>  
 **Branch:** `main`  
-**Verified implementation baseline:** `fe14468` (`Add protected reviewer activation path`)
+**Verified implementation baseline:** `9054d2e` (`Preserve evidence resolution provenance`)
 
 This file is the continuity note for starting a new Codex conversation. It does not
 override `AGENTS.md` or [North Star](North%20Star.md); read those first.
@@ -25,6 +25,12 @@ An empty Supabase Free production foundation exists in Frankfurt (`eu-central-1`
 All six forward migrations are applied there, one project-specific Auth user is mapped
 to an enabled reviewer, and production probes confirm zero application rows plus
 anon/authenticated/service-role table isolation.
+
+The seventh forward migration is implemented and locally verified. It adds an
+append-only event for every accepted or rejected evidence transition, including honest
+human/policy provenance and migration-only `legacy_unknown` handling. It has **not**
+been applied to production; the managed database remains on six migrations until Rui
+separately approves that production mutation.
 
 The approved reviewer login/Auth implementation is deployed separately at
 <https://reviewer.insparian-scam-radar-reviewer.pages.dev/>. Cloudflare Access blocks
@@ -50,6 +56,9 @@ guard have all passed the production smoke test.
   evidence supporting the current public claims.
 - [x] Forward-only local migrations, grants/RLS, immutable audit records, policy and
   human provenance, and real PostgreSQL contract tests.
+- [x] Append-only evidence-resolution provenance for accepted and rejected evidence,
+  written atomically with the state change. Existing terminal rows are represented as
+  `legacy_unknown` without invented actors or timestamps.
 - [x] Public GitHub repository, branch protection/security baseline, secret scanning,
   dependency review, and protected `cloudflare-preview` environment.
 - [x] Fixture-only Cloudflare Direct Upload project and guarded deployment workflow.
@@ -138,6 +147,11 @@ Earlier verified baseline at commit `52936a7`:
 - The 2026-09-17 interactive production smoke passed: the reviewer identity loaded an
   empty `0 OPEN` queue, sign-out cleared the Supabase session, and a logged-out direct
   queue visit returned to the login page. No real evidence or review decision changed.
+- Evidence-resolution implementation `9054d2e`: `make check`, 100 Python/database
+  tests, 22 web unit tests, 4 Playwright tests, all 100 recorded eval cases, and the
+  fixture static build passed. A real from-zero local Supabase/PostgreSQL stack applied
+  all seven migrations and passed human accepted/rejected provenance, live-policy
+  accepted/rejected provenance, append-only enforcement, and role/RPC boundaries.
 
 ## Credential state
 
@@ -165,7 +179,8 @@ Earlier verified baseline at commit `52936a7`:
 
 The fixture preview paths F6/F7 remain active for public application traffic. Package
 registry access F0 is allowed, and fixture search F8 remains browser-local. F3 remains
-an empty six-migration schema plus one reviewer identity. The F4 reviewer control
+an empty six-migration production schema plus one reviewer identity; the seventh
+migration is verified locally but not applied there. The F4 reviewer control
 plane is active only on the Access-protected preview; its unauthenticated boundary is
 verified and its authenticated end-to-end smoke test passed. The following live scopes
 remain disabled and require a fresh Decision Checkpoint plus Rui's explicit `proceed`:
@@ -188,9 +203,9 @@ it. Keep all source entries disabled, all collection/AI/deploy kill switches off
 The reviewer control plane is deployed behind Access, while real-source collection
 remains later and separately gated.
 
-1. Before accepting live evidence, add a forward, append-only evidence-resolution
-   event migration so rejected evidence retains honest actor/policy provenance. Do
-   not invent historical reviewers or timestamps.
+1. With a fresh explicit production-mutation approval, apply the verified seventh
+   `evidence_resolution_events` migration through the protected Supabase workflow and
+   confirm the managed project remains empty with all role/RPC boundaries intact.
 2. Add one explicit database schema-v2 export mapping test covering every public-web
    presentation field; the live build must not depend on fixture-only copy.
 3. Design and approve encrypted R2 recovery: exact outbound data, encryption before
@@ -215,9 +230,10 @@ Relevant runbooks: [initial setup](runbooks/initial-setup.md),
 > working tree, latest GitHub CI, fixture-preview health, and the protected reviewer
 > preview. Continue with the first item in `Next implementation sequence`. The sixth
 > production migration and Access-protected reviewer branch preview are active; the
-> Access + Supabase login/empty-queue/sign-out/route-guard smoke test passed. Do not
-> activate real collection, Gemini,
-> production Supabase data movement, R2 backups, DNS, production publication, or live
+> seventh evidence-resolution migration is locally verified but not applied to
+> production. The Access + Supabase login/empty-queue/sign-out/route-guard smoke test
+> passed. Do not activate real collection, Gemini, production Supabase data movement,
+> R2 backups, DNS, production publication, or live
 > automatic publication without the repository's Decision Checkpoint and my explicit
 > `proceed`. Do not spawn sub-agents unless I explicitly ask.
 
