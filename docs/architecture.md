@@ -1,6 +1,6 @@
 # Scam Radar V0.1 architecture
 
-**Status:** Offline-first implementation architecture, updated 2026-09-17. The empty Frankfurt Supabase foundation and sixth reviewer-bootstrap migration are active. A dedicated Cloudflare Access-protected reviewer preview is deployed with public Supabase browser configuration; its end-to-end authenticated login smoke test remains pending. External collection, Gemini, live evidence movement, encrypted R2 backup, public production publication, DNS, and telemetry are not activated.
+**Status:** Offline-first implementation architecture, updated 2026-09-17. The empty Frankfurt Supabase foundation and sixth reviewer-bootstrap migration are active. A dedicated Cloudflare Access-protected reviewer preview is deployed, and its Access, Supabase Auth, empty-queue bootstrap, sign-out, and logged-out route-guard paths have passed end-to-end verification. External collection, Gemini, live evidence movement, encrypted R2 backup, public production publication, DNS, and telemetry are not activated.
 
 ## Outcome and non-negotiable invariants
 

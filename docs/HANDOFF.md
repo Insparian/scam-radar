@@ -31,9 +31,9 @@ The approved reviewer login/Auth implementation is deployed separately at
 unauthenticated requests before Pages serves the app, then Supabase Auth and narrow
 RPCs enforce reviewer authority. The build is only on the `reviewer` preview branch;
 the Pages production branch remains `production-disabled`. The public fixture preview
-is unchanged and does not initialize Supabase. The remaining activation check is the
-interactive Cloudflare Access + Supabase login, empty-queue bootstrap, and sign-out
-smoke test.
+is unchanged and does not initialize Supabase. Cloudflare account-member Access,
+Supabase reviewer login, empty-queue bootstrap, sign-out, and the logged-out route
+guard have all passed the production smoke test.
 
 ## Completed
 
@@ -131,6 +131,13 @@ Earlier verified baseline at commit `52936a7`:
 - Reviewer deployment run `35183748991` built commit `fe14468`, uploaded 99 files only
   to the `reviewer` preview branch, and passed unauthenticated Cloudflare Access probes
   both before and after upload. A separate local probe also passed after completion.
+- The first reviewer build used a stale/invalid publishable key. The protected GitHub
+  variable was corrected to the current public key; a fake-credential probe then
+  reached Auth and returned the expected `invalid_credentials` failure. Redeploy run
+  `35187327856` passed all build, offline-boundary, upload, and Access checks.
+- The 2026-09-17 interactive production smoke passed: the reviewer identity loaded an
+  empty `0 OPEN` queue, sign-out cleared the Supabase session, and a logged-out direct
+  queue visit returned to the login page. No real evidence or review decision changed.
 
 ## Credential state
 
@@ -149,6 +156,10 @@ Earlier verified baseline at commit `52936a7`:
   false. Its encrypted `SUPABASE_DB_URL` uses the Frankfurt session pooler so
   GitHub-hosted IPv4 runners can connect, and `SUPABASE_REVIEWER_EMAIL` contains the
   private project mailbox. Neither value is present in the checkout or logs.
+- The protected `cloudflare-preview` environment stores the public Supabase URL and
+  current publishable key for reviewer builds. Cloudflare preview Access uses account
+  membership as the outer identity; it does not require the Supabase reviewer mailbox
+  to receive Cloudflare one-time codes.
 
 ## External-boundary status
 
@@ -156,9 +167,8 @@ The fixture preview paths F6/F7 remain active for public application traffic. Pa
 registry access F0 is allowed, and fixture search F8 remains browser-local. F3 remains
 an empty six-migration schema plus one reviewer identity. The F4 reviewer control
 plane is active only on the Access-protected preview; its unauthenticated boundary is
-verified and its authenticated interactive smoke test is pending. The following live
-scopes remain disabled and require a fresh Decision Checkpoint plus Rui's explicit
-`proceed`:
+verified and its authenticated end-to-end smoke test passed. The following live scopes
+remain disabled and require a fresh Decision Checkpoint plus Rui's explicit `proceed`:
 
 - F1 real-source discovery/fetching;
 - F2 Gemini/Google processing;
@@ -178,23 +188,20 @@ it. Keep all source entries disabled, all collection/AI/deploy kill switches off
 The reviewer control plane is deployed behind Access, while real-source collection
 remains later and separately gated.
 
-1. Complete the interactive reviewer smoke test: Cloudflare Access login, Supabase
-   password login, empty-queue bootstrap, and sign-out. Do not enter credentials into
-   chat or logs.
-2. Before accepting live evidence, add a forward, append-only evidence-resolution
+1. Before accepting live evidence, add a forward, append-only evidence-resolution
    event migration so rejected evidence retains honest actor/policy provenance. Do
    not invent historical reviewers or timestamps.
-3. Add one explicit database schema-v2 export mapping test covering every public-web
+2. Add one explicit database schema-v2 export mapping test covering every public-web
    presentation field; the live build must not depend on fixture-only copy.
-4. Design and approve encrypted R2 recovery: exact outbound data, encryption before
+3. Design and approve encrypted R2 recovery: exact outbound data, encryption before
    upload, recovery-key custody, retention, caps, and a restore rehearsal.
-5. Separately review the first exact source URLs, terms/robots rules, collection caps,
+4. Separately review the first exact source URLs, terms/robots rules, collection caps,
    contact address, Gemini payload boundary, and call/character limits.
-6. Run one capped source in shadow mode, manually inspect every row, proposal, decision,
+5. Run one capped source in shadow mode, manually inspect every row, proposal, decision,
    and log, and keep live automatic publication disabled.
-7. Only after measured live performance, consider a narrowly defined automatic policy
+6. Only after measured live performance, consider a narrowly defined automatic policy
    class through a new forward allowlist migration and separate approval.
-8. Treat production publication, custom domain/DNS, mainland mobile/WeChat validation,
+7. Treat production publication, custom domain/DNS, mainland mobile/WeChat validation,
    and launch as later, separately approved steps.
 
 Relevant runbooks: [initial setup](runbooks/initial-setup.md),
@@ -208,8 +215,8 @@ Relevant runbooks: [initial setup](runbooks/initial-setup.md),
 > working tree, latest GitHub CI, fixture-preview health, and the protected reviewer
 > preview. Continue with the first item in `Next implementation sequence`. The sixth
 > production migration and Access-protected reviewer branch preview are active; the
-> interactive Access + Supabase login/empty-queue/sign-out smoke test is still pending.
-> Do not activate real collection, Gemini,
+> Access + Supabase login/empty-queue/sign-out/route-guard smoke test passed. Do not
+> activate real collection, Gemini,
 > production Supabase data movement, R2 backups, DNS, production publication, or live
 > automatic publication without the repository's Decision Checkpoint and my explicit
 > `proceed`. Do not spawn sub-agents unless I explicitly ask.
