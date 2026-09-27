@@ -35,6 +35,16 @@ Cloudflare Pages Free currently permits 500 builds per month and serves static a
 
 Exact versions, checksums, and installation steps must be recorded when activation implements the job. No `curl | shell`, floating container tag, or unpinned action is allowed.
 
+## Offline implementation pins (2026-09-20)
+
+- `pg_dump`/`psql`: [Docker Official Image `postgres:17.9`](https://hub.docker.com/layers/library/postgres/17.9/images/sha256-66b6a97eac1771fc78bd201b918b4253859f436c6913aeede97bd5366cce89ae), immutable multi-platform index `sha256:2a0d0fe14825b0939f78a8cad5cd4e6aa68bf94d0e5dd96e24b6d23af4315545`. The backup job pins this index and checks the server major before dump; a newer incompatible server fails closed. This image is runner-only, never public runtime.
+- `age`: [v1.3.2 official release](https://github.com/FiloSottile/age/releases/tag/v1.3.2), Linux amd64 archive SHA-256 `cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10`. This matches the version used in the synthetic local restore rehearsal.
+- `rclone`: [v1.75.1 official download manifest](https://downloads.rclone.org/v1.75.1/SHA256SUMS), Linux amd64 ZIP SHA-256 `982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab`; macOS arm64 ZIP for the localhost rehearsal SHA-256 `c61d7a371c62bcbbe882c3423aa4b8bf63485c248dd0f692997b8f0c3f6d0c6f`. It runs only after ciphertext is verified and receives a private-bucket R2 credential. No new browser dependency or automatic paid path is added.
+
+The scheduled workflow remains disabled until separate authorization. These
+official pins establish reproducible offline code; they do not establish the
+production database major version, R2 bucket permissions, or real restore.
+
 ## Recovery and retention constraints
 
 - A backup is not healthy until a separate restore rehearsal verifies schema, row counts, release hashes, authorization boundaries, and a byte-equivalent exact release export.

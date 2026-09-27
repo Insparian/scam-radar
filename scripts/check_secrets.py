@@ -40,7 +40,9 @@ EXPORT_SENTINELS = (
 
 def text_files(root: Path) -> Iterator[Path]:
     for path in root.rglob("*"):
-        if not path.is_file() or any(part in SKIP_PARTS for part in path.parts):
+        if not path.is_file() or any(
+            part in SKIP_PARTS for part in path.relative_to(root).parts
+        ):
             continue
         try:
             path.read_text(encoding="utf-8")

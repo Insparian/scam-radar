@@ -54,6 +54,8 @@ def behavior_hash() -> str:
         ROOT / "config" / "scoring-v0.1.yaml",
         ROOT / "config" / "models.yaml",
         ROOT / "config" / "publication-policy-v0.1.yaml",
+        ROOT / "worker/src/scam_radar/llm/http_provider.py",
+        ROOT / "worker/src/scam_radar/llm/configured.py",
     ]
     digest = hashlib.sha256()
     for path in paths:

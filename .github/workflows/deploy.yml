@@ -1,9 +1,12 @@
-name: Deploy (disabled until activation)
+name: Publish an approved immutable release
 
 on:
   workflow_call:
     inputs:
       release_id:
+        required: true
+        type: string
+      confirmation:
         required: true
         type: string
   workflow_dispatch:
@@ -12,8 +15,13 @@ on:
         description: "Exact approved immutable release ID"
         required: true
         type: string
+      confirmation:
+        description: "Type DEPLOY APPROVED IMMUTABLE RELEASE"
+        required: true
+        type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -24,15 +32,153 @@ jobs:
   activation-guard:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    env:
+      RELEASE_ID: ${{ inputs.release_id }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      DEPLOY_SWITCH: ${{ vars.SCAM_RADAR_DEPLOY_ENABLED }}
+      ACTIVATION_SWITCH: ${{ vars.SCAM_RADAR_LIVE_ACTIVATION_APPROVED }}
     steps:
-      - name: Report the disabled deploy boundary
-        if: vars.SCAM_RADAR_DEPLOY_ENABLED != 'true'
+      - name: Require separate external activation
         run: |
-          echo "Deployment is disabled. No artifact was uploaded and production was unchanged."
-          echo "### Deployment skipped: activation pending" >> "$GITHUB_STEP_SUMMARY"
-      - name: Fail closed if the switch is changed prematurely
-        if: vars.SCAM_RADAR_DEPLOY_ENABLED == 'true'
+          test "$DEPLOY_SWITCH" = true || { echo 'Deployment is disabled; no credential was read.'; exit 1; }
+          test "$ACTIVATION_SWITCH" = true
+          test "$CONFIRMATION" = 'DEPLOY APPROVED IMMUTABLE RELEASE'
+          [[ "$RELEASE_ID" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]
+          test "$GITHUB_REF" = refs/heads/main
+
+  publish:
+    needs: activation-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: production
+    env:
+      RELEASE_ID: ${{ inputs.release_id }}
+      SCAM_RADAR_DEPLOY_ENABLED: 'true'
+      SCAM_RADAR_LIVE_ACTIVATION_APPROVED: 'true'
+      SCAM_RADAR_DEPLOY_CONFIRMATION: DEPLOY APPROVED IMMUTABLE RELEASE
+      SCAM_RADAR_SUPABASE_URL: ${{ vars.SCAM_RADAR_SUPABASE_URL }}
+      SCAM_RADAR_PAGES_PROJECT: ${{ vars.SCAM_RADAR_PAGES_PROJECT }}
+      SCAM_RADAR_PAGES_PRODUCTION_BRANCH: ${{ vars.SCAM_RADAR_PAGES_PRODUCTION_BRANCH }}
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Check out immutable source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Use Node 24
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+          package-manager-cache: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+      - name: Require offline CI for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "The kill switch was enabled before the reviewed exporter and Direct Upload steps were activated."
-          echo "No Cloudflare credential was read."
-          exit 1
+          result="$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$GITHUB_SHA" --workflow ci.yml --json conclusion,status --jq 'any(.[]; .status == "completed" and .conclusion == "success")')"
+          test "$result" = true
+      - name: Install locked build dependencies
+        run: |
+          python -m pip install uv==0.12.5
+          uv sync --project worker --locked --extra dev
+          npm ci --prefix web
+      - name: Prepare one release workspace
+        run: |
+          echo "RELEASE_WORK=work/deploy-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+          mkdir -p "work/deploy-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          test -n "$SCAM_RADAR_SUPABASE_URL"
+          test -n "$SCAM_RADAR_PAGES_PROJECT"
+          test -n "$SCAM_RADAR_PAGES_PRODUCTION_BRANCH"
+      - name: Export only the approved immutable release
+        env:
+          SCAM_RADAR_SUPABASE_SERVICE_KEY: ${{ secrets.SCAM_RADAR_SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/release_rpc.py export --mode live --api-url "$SCAM_RADAR_SUPABASE_URL" \
+            --release-id "$RELEASE_ID" --destination "$RELEASE_WORK/release.json"
+      - name: Build and scan without credentials
+        run: |
+          python scripts/build_public_release.py --release "$RELEASE_WORK/release.json" \
+            --release-id "$RELEASE_ID" --destination "$RELEASE_WORK/site"
+          python scripts/check_secrets.py --export "$RELEASE_WORK/site"
+      - name: Upload preview of the exact artifact
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python scripts/pages_upload.py upload --mode live --account-id "$CLOUDFLARE_ACCOUNT_ID" \
+            --project-name "$SCAM_RADAR_PAGES_PROJECT" --artifact "$RELEASE_WORK/site" \
+            --release-id "$RELEASE_ID" --branch preview --environment preview \
+            --commit-sha "$GITHUB_SHA" --operation-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-preview" \
+            --output-receipt "$RELEASE_WORK/preview-receipt.json"
+      - name: Check preview without credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python scripts/pages_upload.py smoke --mode live --account-id "$CLOUDFLARE_ACCOUNT_ID" \
+            --project-name "$SCAM_RADAR_PAGES_PROJECT" --release-path "$RELEASE_WORK/release.json" \
+            --receipt-file "$RELEASE_WORK/preview-receipt.json"
+      - name: Mark the exact artifact for production
+        env:
+          SCAM_RADAR_SUPABASE_SERVICE_KEY: ${{ secrets.SCAM_RADAR_SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/release_rpc.py mark --mode live --api-url "$SCAM_RADAR_SUPABASE_URL" \
+            --release-id "$RELEASE_ID" --artifact "$RELEASE_WORK/site" --commit-sha "$GITHUB_SHA"
+      - name: Upload the identical production artifact once
+        id: production_upload
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python scripts/pages_upload.py upload --mode live --account-id "$CLOUDFLARE_ACCOUNT_ID" \
+            --project-name "$SCAM_RADAR_PAGES_PROJECT" --artifact "$RELEASE_WORK/site" \
+            --release-id "$RELEASE_ID" --branch "$SCAM_RADAR_PAGES_PRODUCTION_BRANCH" \
+            --environment production --commit-sha "$GITHUB_SHA" \
+            --operation-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-production" \
+            --output-receipt "$RELEASE_WORK/production-receipt.json"
+      - name: Inspect an uncertain upload without retrying it
+        if: failure() && steps.production_upload.outcome == 'failure'
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python scripts/pages_upload.py inspect --mode live --account-id "$CLOUDFLARE_ACCOUNT_ID" \
+            --project-name "$SCAM_RADAR_PAGES_PROJECT" --artifact "$RELEASE_WORK/site" \
+            --release-id "$RELEASE_ID" --branch "$SCAM_RADAR_PAGES_PRODUCTION_BRANCH" \
+            --environment production --commit-sha "$GITHUB_SHA" \
+            --operation-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-production" \
+            --output-receipt "$RELEASE_WORK/production-receipt.json"
+      - name: Preserve the upload receipt in release state
+        env:
+          SCAM_RADAR_SUPABASE_SERVICE_KEY: ${{ secrets.SCAM_RADAR_SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/release_rpc.py note --mode live --api-url "$SCAM_RADAR_SUPABASE_URL" \
+            --release-id "$RELEASE_ID" --artifact "$RELEASE_WORK/site" \
+            --receipt-file "$RELEASE_WORK/production-receipt.json"
+      - name: Check the production deployment without credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python scripts/pages_upload.py smoke --mode live --account-id "$CLOUDFLARE_ACCOUNT_ID" \
+            --project-name "$SCAM_RADAR_PAGES_PROJECT" --release-path "$RELEASE_WORK/release.json" \
+            --receipt-file "$RELEASE_WORK/production-receipt.json"
+      - name: Register the verified production deployment
+        env:
+          SCAM_RADAR_SUPABASE_SERVICE_KEY: ${{ secrets.SCAM_RADAR_SUPABASE_SERVICE_KEY }}
+        run: |
+          python scripts/release_rpc.py record --mode live --api-url "$SCAM_RADAR_SUPABASE_URL" \
+            --release-id "$RELEASE_ID" --artifact "$RELEASE_WORK/site" \
+            --receipt-file "$RELEASE_WORK/production-receipt.json"
+      - name: Retain nonsecret reconciliation IDs when upload occurred
+        if: always()
+        run: |
+          if [ -n "${RELEASE_WORK:-}" ] && [ -f "$RELEASE_WORK/production-receipt.json" ]; then
+            python -c 'import json,os; x=json.load(open(os.environ["RELEASE_WORK"]+"/production-receipt.json")); print("Production deployment ID: "+x["deployment_id"]+"; release ID: "+x["release_id"]+"; artifact SHA-256: "+x["artifact_hash"])' >> "$GITHUB_STEP_SUMMARY"
+            echo 'If registration failed, inspect this deployment and reconcile the same receipt. Never retry upload blindly.' >> "$GITHUB_STEP_SUMMARY"
+          fi

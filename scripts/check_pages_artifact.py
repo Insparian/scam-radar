@@ -93,6 +93,25 @@ def validate_pages_artifact(root: Path, expected_release_id: str) -> ArtifactSum
             f"Pages artifact release mismatch: expected {expected_release_id}, got {release_id}"
         )
 
+    search = json.loads((root / "search-index.json").read_text(encoding="utf-8"))
+    if search.get("release_id") != expected_release_id:
+        raise RuntimeError("Search index release mismatch")
+    for item in search.get("items", []):
+        slug = item.get("slug", "")
+        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
+            raise RuntimeError("Invalid search slug")
+        page = root / "scam" / slug / "index.html"
+        if not page.is_file() or expected_release_id not in page.read_text(
+            encoding="utf-8"
+        ):
+            raise RuntimeError("Search detail page release mismatch")
+    for relative in ("index.html", "search/index.html"):
+        page = root / relative
+        if not page.is_file() or expected_release_id not in page.read_text(
+            encoding="utf-8"
+        ):
+            raise RuntimeError("Public page release mismatch")
+
     return ArtifactSummary(
         release_id=expected_release_id,
         file_count=len(paths),

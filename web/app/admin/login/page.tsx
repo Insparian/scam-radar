@@ -80,8 +80,7 @@ export default function AdminLoginPage() {
           </form>
         )}
         <small>
-          登录凭据和会话信息会发送到已批准的 Frankfurt Supabase
-          项目。公开搜索词不会发送。
+          登录凭据和会话信息会发送到当前配置的审核数据库。公开搜索词不会发送。
         </small>
       </section>
     </main>

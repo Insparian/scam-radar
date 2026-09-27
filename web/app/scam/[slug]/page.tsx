@@ -13,7 +13,12 @@ import { getPattern, getRelease } from "@/lib/public-data/load";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return getRelease().patterns.map((pattern) => ({ slug: pattern.slug }));
+  const patterns = getRelease().patterns;
+  // Next static export requires one generated route even when a legitimate
+  // takedown release has no public patterns. The reserved route renders 404.
+  return patterns.length > 0
+    ? patterns.map((pattern) => ({ slug: pattern.slug }))
+    : [{ slug: "release-empty" }];
 }
 
 export async function generateMetadata({
@@ -23,7 +28,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const pattern = getPattern(slug);
-  if (!pattern) return { title: "记录未找到" };
+  if (!pattern) return { title: "记录未找到", robots: { index: false } };
   return {
     title: pattern.canonical_name,
     description: pattern.one_sentence_summary,

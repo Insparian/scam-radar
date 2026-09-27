@@ -6,3 +6,23 @@ recorded_model: recorded-fixture-v1
 embedding_model: null
 embedding_enabled: false
 activation_note: Choose and live-evaluate a currently supported free-tier model before activation.
+# Dormant evaluation candidates only; selecting one does not grant activation.
+evaluation_candidates:
+  glm:
+    model: glm-4.7
+    protocol: openai
+    endpoint: https://open.bigmodel.cn/api/paas/v4/chat/completions
+    price_verified: false
+    official_reference: https://docs.bigmodel.cn/cn/guide/models/text/glm-4.7
+  qwen:
+    model: qwen-plus-2025-09-11
+    protocol: openai
+    endpoint: https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions
+    price_verified: false
+    official_reference: https://www.alibabacloud.com/help/en/model-studio/qwen-plus
+  gemini:
+    model: gemini-2.5-flash
+    protocol: gemini
+    endpoint: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+    price_verified: true
+    official_reference: https://ai.google.dev/gemini-api/docs/pricing

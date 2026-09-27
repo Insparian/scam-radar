@@ -43,29 +43,69 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.13"
-      - name: Install locked fixture worker
-        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+      - name: Install locked worker
         run: |
           python -m pip install uv==0.12.5
           uv sync --project worker --locked --extra dev
       - name: Run safe fixture collection check
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run
         run: make collect-dry-run
-      - name: Fail closed for live collection
+      - name: Require separate live activation
         if: github.event_name == 'schedule' || !inputs.dry_run
+        env:
+          LIVE_ACTIVATION_APPROVED: ${{ vars.SCAM_RADAR_LIVE_ACTIVATION_APPROVED }}
+          LIVE_COLLECT_ENABLED: ${{ vars.SCAM_RADAR_COLLECT_ENABLED }}
+          LIVE_AI_ENABLED: ${{ vars.SCAM_RADAR_AI_ENABLED }}
+          APPROVED_SOURCE_KEY: ${{ vars.SCAM_RADAR_APPROVED_SOURCE_KEY }}
+          REQUESTED_SOURCE_KEY: ${{ inputs.source_key || vars.SCAM_RADAR_APPROVED_SOURCE_KEY }}
         run: |
-          echo "Live collection has not passed the external activation checkpoint."
-          echo "No source was contacted."
-          exit 1
+          if [ "$LIVE_ACTIVATION_APPROVED" != 'true' ] || \
+             [ "$LIVE_COLLECT_ENABLED" != 'true' ] || \
+             [ "$LIVE_AI_ENABLED" != 'true' ]; then
+            echo "Live collection has not passed the external activation checkpoint."
+            echo "No source was contacted."
+            exit 1
+          fi
+          test -n "$APPROVED_SOURCE_KEY"
+          test "$APPROVED_SOURCE_KEY" != all
+          test "$REQUESTED_SOURCE_KEY" = "$APPROVED_SOURCE_KEY"
+      - name: Run reviewed live batch
+        if: github.event_name == 'schedule' || !inputs.dry_run
+        env:
+          SCAM_RADAR_ENV: production
+          SCAM_RADAR_COLLECT_ENABLED: 'true'
+          SCAM_RADAR_AI_ENABLED: 'true'
+          SCAM_RADAR_DEPLOY_ENABLED: 'false'
+          SCAM_RADAR_MAX_ITEMS_PER_RUN: '5'
+          SCAM_RADAR_MAX_ITEMS_PER_SOURCE: '5'
+          SCAM_RADAR_MAX_GEMINI_CALLS_PER_RUN: '10'
+          SCAM_RADAR_SUPABASE_URL: ${{ vars.SCAM_RADAR_SUPABASE_URL }}
+          SCAM_RADAR_SUPABASE_SERVICE_KEY: ${{ secrets.SCAM_RADAR_SUPABASE_SERVICE_KEY }}
+          SCAM_RADAR_MODEL_API_KEY: ${{ secrets.SCAM_RADAR_MODEL_API_KEY }}
+          SELECTED_SOURCE_KEY: ${{ inputs.source_key || vars.SCAM_RADAR_APPROVED_SOURCE_KEY }}
+        run: |
+          mkdir -p work/launch-readiness
+          uv run --project worker --locked scam-radar run-batch \
+            --source-key "$SELECTED_SOURCE_KEY" > work/launch-readiness/batch-summary.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('work/launch-readiness/batch-summary.json').read_text())
+          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('## Collection run\n\n')
+              output.write(f"- Outcome: {summary['outcome']}\n")
+              output.write(f"- Counts: {json.dumps(summary['counts'], sort_keys=True)}\n")
+          PY
+          rm work/launch-readiness/batch-summary.json
       - name: Write collection summary
-        if: always()
+        if: always() && (github.event_name == 'workflow_dispatch' && inputs.dry_run)
         run: |
           {
             echo "## Collection boundary"
             echo ""
             echo "- Source selection: ${{ inputs.source_key || 'scheduled' }}"
             echo "- Live source requests: 0"
-            echo "- Gemini calls: 0"
+            echo "- Model calls: 0"
             echo "- Production writes: 0"
           } >> "$GITHUB_STEP_SUMMARY"
 

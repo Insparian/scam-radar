@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import feedparser
 
@@ -18,7 +18,16 @@ def discover_feed(body: bytes, *, max_items: int = 50) -> list[DiscoveredItem]:
             continue
         published_hint: str | None = None
         if entry.get("published_parsed"):
-            published_hint = datetime(*entry.published_parsed[:6]).isoformat()
+            published = entry.published_parsed
+            published_hint = datetime(
+                published.tm_year,
+                published.tm_mon,
+                published.tm_mday,
+                published.tm_hour,
+                published.tm_min,
+                published.tm_sec,
+                tzinfo=UTC,
+            ).isoformat()
         items.append(
             DiscoveredItem(
                 url=link,

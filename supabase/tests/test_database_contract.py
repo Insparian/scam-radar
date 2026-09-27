@@ -37,6 +37,8 @@ EXPECTED_TABLES = {
     "public_release_evidence_items",
     "publication_changes",
     "operation_leases",
+    "source_version_candidates",
+    "source_version_updates",
     "policy_decisions",
 }
 
@@ -51,11 +53,28 @@ REVIEWER_FUNCTIONS = {
 }
 
 SERVICE_FUNCTIONS = {
+    "ingest_source_version",
+    "store_ai_artifact",
+    "get_ai_artifact",
+    "sync_registry_source",
+    "start_pipeline_run",
+    "finish_pipeline_run",
+    "acquire_operation_lease",
+    "release_operation_lease",
+    "claim_source_version",
+    "finish_source_version",
+    "record_source_checkpoint",
+    "submit_new_pattern_candidate",
+    "list_pattern_match_candidates",
+    "submit_existing_pattern_evidence",
     "prepare_public_release",
     "export_public_release",
     "mark_release_deploying",
+    "note_release_uploaded",
     "record_deployed_release",
     "record_release_failure",
+    "record_release_rollback",
+    "record_unrecorded_upload_rollback",
     "record_policy_decision",
     "apply_live_policy_publication",
 }

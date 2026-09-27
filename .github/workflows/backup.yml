@@ -1,10 +1,15 @@
-name: Database backup (disabled until activation)
+name: Encrypted database backup
 
 on:
   schedule:
     - cron: "43 2 * * *"
       timezone: "UTC"
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type BACKUP APPROVED CIPHERTEXT ONLY
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,15 +23,97 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || vars.SCAM_RADAR_BACKUP_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    env:
+      BACKUP_SWITCH: ${{ vars.SCAM_RADAR_BACKUP_ENABLED }}
+      ACTIVATION_SWITCH: ${{ vars.SCAM_RADAR_LIVE_ACTIVATION_APPROVED }}
+      SAVED_CONFIRMATION: ${{ vars.SCAM_RADAR_BACKUP_CONFIRMATION }}
+      MANUAL_CONFIRMATION: ${{ inputs.confirmation }}
     steps:
-      - name: Report the disabled backup boundary
-        if: vars.SCAM_RADAR_BACKUP_ENABLED != 'true'
+      - name: Require separate backup activation
         run: |
-          echo "Backup is disabled. No database credential was read and no object was uploaded."
-          echo "### Backup skipped: activation pending" >> "$GITHUB_STEP_SUMMARY"
-      - name: Fail closed if the switch is changed prematurely
-        if: vars.SCAM_RADAR_BACKUP_ENABLED == 'true'
+          test "$BACKUP_SWITCH" = true || { echo 'Backup is disabled; no credential was read.'; exit 1; }
+          test "$ACTIVATION_SWITCH" = true
+          test "$SAVED_CONFIRMATION" = 'BACKUP APPROVED CIPHERTEXT ONLY'
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            test "$MANUAL_CONFIRMATION" = 'BACKUP APPROVED CIPHERTEXT ONLY'
+          fi
+          test "$GITHUB_REF" = refs/heads/main
+
+  encrypted-backup:
+    needs: activation-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production-backup
+    env:
+      SCAM_RADAR_BACKUP_ENABLED: 'true'
+      SCAM_RADAR_LIVE_ACTIVATION_APPROVED: 'true'
+      SCAM_RADAR_BACKUP_CONFIRMATION: BACKUP APPROVED CIPHERTEXT ONLY
+      SCAM_RADAR_AGE_RECIPIENT: ${{ vars.SCAM_RADAR_AGE_RECIPIENT }}
+      SCAM_RADAR_R2_ACCOUNT_ID: ${{ vars.SCAM_RADAR_R2_ACCOUNT_ID }}
+      SCAM_RADAR_R2_BUCKET: ${{ vars.SCAM_RADAR_R2_BUCKET }}
+      PGHOST: ${{ vars.SCAM_RADAR_BACKUP_PGHOST }}
+      PGPORT: '5432'
+      PGUSER: ${{ vars.SCAM_RADAR_BACKUP_PGUSER }}
+      PGDATABASE: postgres
+      PGSSLMODE: verify-full
+    steps:
+      - name: Check out immutable backup code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+      - name: Install only pinned and checksum-verified backup tools
         run: |
-          echo "The backup switch was enabled before pinned dump, encryption, upload, and restore-verification steps were activated."
-          echo "No Supabase or R2 credential was read."
-          exit 1
+          mkdir -p work/backup-tools
+          curl --fail --location --silent --show-error --max-time 120 \
+            https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-linux-amd64.tar.gz \
+            --output work/backup-tools/age.tar.gz
+          echo 'cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10  work/backup-tools/age.tar.gz' | sha256sum -c -
+          tar -xzf work/backup-tools/age.tar.gz -C work/backup-tools age/age
+          curl --fail --location --silent --show-error --max-time 120 \
+            https://downloads.rclone.org/v1.75.1/rclone-v1.75.1-linux-amd64.zip \
+            --output work/backup-tools/rclone.zip
+          echo '982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  work/backup-tools/rclone.zip' | sha256sum -c -
+          unzip -q work/backup-tools/rclone.zip -d work/backup-tools
+          docker pull postgres:17.9@sha256:2a0d0fe14825b0939f78a8cad5cd4e6aa68bf94d0e5dd96e24b6d23af4315545
+          docker run --rm --pull=never postgres:17.9@sha256:2a0d0fe14825b0939f78a8cad5cd4e6aa68bf94d0e5dd96e24b6d23af4315545 pg_dump --version | grep -F '17.9'
+      - name: Prepare isolated ephemeral output and TLS certificate
+        env:
+          SCAM_RADAR_SUPABASE_CA_PEM: ${{ secrets.SCAM_RADAR_SUPABASE_CA_PEM }}
+        run: |
+          test -n "$SCAM_RADAR_SUPABASE_CA_PEM"
+          test -n "$SCAM_RADAR_AGE_RECIPIENT"
+          test -n "$SCAM_RADAR_R2_ACCOUNT_ID"
+          test -n "$SCAM_RADAR_R2_BUCKET"
+          echo "BACKUP_WORK=work/production-backup-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+          mkdir -m 700 "work/production-backup-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          printf '%s\n' "$SCAM_RADAR_SUPABASE_CA_PEM" > work/backup-tools/supabase-ca.pem
+          chmod 600 work/backup-tools/supabase-ca.pem
+      - name: Stream PostgreSQL archive directly through age
+        env:
+          PGPASSWORD: ${{ secrets.SCAM_RADAR_BACKUP_PGPASSWORD }}
+          SCAM_RADAR_PG_CA_FILE: work/backup-tools/supabase-ca.pem
+        run: |
+          python scripts/backup_database.py --mode live --destination "$BACKUP_WORK/encrypted" \
+            --age-binary work/backup-tools/age/age --recipient "$SCAM_RADAR_AGE_RECIPIENT"
+      - name: Upload ciphertext and integrity manifest only
+        env:
+          SCAM_RADAR_R2_ACCESS_KEY_ID: ${{ secrets.SCAM_RADAR_R2_ACCESS_KEY_ID }}
+          SCAM_RADAR_R2_SECRET_ACCESS_KEY: ${{ secrets.SCAM_RADAR_R2_SECRET_ACCESS_KEY }}
+        run: |
+          manifests=("$BACKUP_WORK"/encrypted/*.json)
+          test "${#manifests[@]}" -eq 1
+          python scripts/upload_encrypted_backup.py --mode live --manifest "${manifests[0]}" \
+            --rclone work/backup-tools/rclone-v1.75.1-linux-amd64/rclone \
+            --endpoint "https://$SCAM_RADAR_R2_ACCOUNT_ID.r2.cloudflarestorage.com" \
+            --account-id "$SCAM_RADAR_R2_ACCOUNT_ID" --bucket "$SCAM_RADAR_R2_BUCKET"
+      - name: Remove transient ciphertext and certificate
+        if: always()
+        run: |
+          if [ -n "${BACKUP_WORK:-}" ]; then
+            case "$BACKUP_WORK" in work/production-backup-[0-9]*-[0-9]*) rm -rf -- "$BACKUP_WORK" ;; *) exit 1 ;; esac
+          fi
+          rm -f -- work/backup-tools/supabase-ca.pem

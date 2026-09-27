@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  getPendingQuery,
+  clearPendingQuery,
+} from "@/lib/public-data/search-handoff";
 
 import { heatLabel } from "@/lib/public-data/copy";
 import { MAX_QUERY_LENGTH, searchPatterns } from "@/lib/public-data/search";
@@ -15,8 +18,10 @@ export function SearchClient({
   index: SearchIndexItem[];
   patterns: PublicPattern[];
 }) {
-  const searchParams = useSearchParams();
-  const initial = searchParams.get("q")?.slice(0, MAX_QUERY_LENGTH) ?? "";
+  const [initial] = useState(getPendingQuery);
+  useEffect(() => {
+    clearPendingQuery();
+  }, []);
   const [input, setInput] = useState(initial);
   const [query, setQuery] = useState(initial);
   const results = useMemo(() => searchPatterns(query, index), [query, index]);
@@ -28,10 +33,6 @@ export function SearchClient({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setQuery(input.trim());
-    const url = input.trim()
-      ? `/search/?q=${encodeURIComponent(input.trim())}`
-      : "/search/";
-    window.history.replaceState(null, "", url);
   }
 
   return (
@@ -68,11 +69,6 @@ export function SearchClient({
               onClick={() => {
                 setInput(term);
                 setQuery(term);
-                window.history.replaceState(
-                  null,
-                  "",
-                  `/search/?q=${encodeURIComponent(term)}`,
-                );
               }}
             >
               {term}

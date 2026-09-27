@@ -9,10 +9,14 @@ from scripts.check_pages_artifact import validate_pages_artifact
 
 def write_minimal_artifact(root: Path, release_id: str = "fixture-release") -> None:
     root.mkdir()
-    (root / "index.html").write_text("home", encoding="utf-8")
+    (root / "index.html").write_text(release_id, encoding="utf-8")
     (root / "404.html").write_text("missing", encoding="utf-8")
     (root / "release.json").write_text(json.dumps({"release_id": release_id}), encoding="utf-8")
-    (root / "search-index.json").write_text("{}", encoding="utf-8")
+    (root / "search-index.json").write_text(
+        json.dumps({"release_id": release_id, "items": []}), encoding="utf-8"
+    )
+    (root / "search").mkdir()
+    (root / "search/index.html").write_text(release_id, encoding="utf-8")
 
 
 def test_pages_artifact_records_a_stable_summary(tmp_path: Path) -> None:
@@ -23,7 +27,7 @@ def test_pages_artifact_records_a_stable_summary(tmp_path: Path) -> None:
     second = validate_pages_artifact(root, "fixture-release")
 
     assert first == second
-    assert first.file_count == 4
+    assert first.file_count == 5
     assert len(first.artifact_hash) == 64
 
 

@@ -1,12 +1,104 @@
 # Scam Radar implementation handoff
 
-**As of:** 2026-09-18
+**As of:** 2026-09-27 Asia/Shanghai
 **Repository:** <https://github.com/Insparian/scam-radar>  
 **Branch:** `main`  
 **Verified implementation baseline:** `9054d2e` (`Preserve evidence resolution provenance`)
 
 This file is the continuity note for starting a new Codex conversation. It does not
 override `AGENTS.md` or [North Star](North%20Star.md); read those first.
+
+**Current state:** Rui explicitly resumed Decision 011 on 2026-09-27. The pause
+section below is historical context, not a current stop instruction. Read the
+latest [PROGRESS.md](PROGRESS.md), [BLOCKED.md](BLOCKED.md) and the offline
+acceptance report before continuing. External activation remains at zero; the
+older hosted previews and production systems were not checked during this run.
+
+## Paused Decision 011 state
+
+Rui explicitly paused the offline-readiness task on 2026-09-21. Do not resume
+automatically; the Goal Router monitor and native goal are paused. Branch `main`
+is still at `412950d`. The complete Decision 011 implementation is preserved as
+an uncommitted working-tree change set; no commit, push, production access,
+collection, model call, backup upload, deployment or DNS change was performed.
+
+Read [PROGRESS.md](PROGRESS.md) and [BLOCKED.md](BLOCKED.md) before touching the
+code. The last fully verified boundary is:
+
+- durable new-pattern localhost source/model → real PostgREST/PostgreSQL →
+  authenticated reviewer → immutable release → static website, including
+  failure resume and duplicate suppression;
+- public UX/privacy at 360/390/768/1440 widths, exact-release production build
+  failure gates and public-artifact credential isolation;
+- localhost Pages protocol with unrecorded-upload reconciliation, older-release
+  refusal, original-artifact rollback and failed-smoke withdrawal;
+- `pg_dump -Fc` streamed through age, localhost S3 readback/tamper refusal, plus
+  an independent fresh-database encrypted restore comparing 25 public tables,
+  exact release and RLS;
+- migration 006 irrelevant-text purge and immutable processed-evidence negative
+  test; migration 007 approved-candidate lookup bounds/grants; and the first
+  version of migration 008's rollback-only existing-pattern transaction test.
+
+### Unverified partial slice at pause
+
+Do not count this slice as complete. `worker/src/scam_radar/durable.py` now asks
+for up to eight approved pattern candidates, compares them one at a time, and
+routes a model match to the evidence-only update transaction.
+`worker/src/scam_radar/llm/http_provider.py` now supplies structured candidate
+summaries to the model. `worker/src/scam_radar/storage/rpc.py` has the narrow
+update client. After the last green SQL contract, migration
+`20260920000800_existing_pattern_evidence.sql` was changed to recompute the
+future accepted evidence-set hash and conservative last-seen/material/content
+hashes. None of these final edits has been executed or tested. The generated
+TypeScript database types and behavior manifest are stale for migrations
+006–008/provider behavior.
+
+The two disposable local stacks used before pause were:
+
+- readiness: `/private/tmp/scam-radar-readiness-rctez5qj`, database container
+  `supabase_db_scam-radar-readiness`, local API `http://127.0.0.1:54321`;
+- reviewer: `/private/tmp/scam-radar-review-ui-c40dwhg7`, database container
+  `supabase_db_scam-radar-review-ui`, local API `http://127.0.0.1:54521`.
+
+Migrations 006–008 were manually applied to those disposable databases before
+migration 008's final edit. Do not assume their migration history matches the
+working tree and do not reapply the edited migration in place. On resume, rebuild
+only a clearly named disposable test stack from zero (never reset an unknown
+instance), then:
+
+1. Run the narrow migration 008 SQL contract and inspect evidence-set/content-
+   hash approval behavior. Keep the approved revision immutable and require a
+   reviewer decision for the proposed evidence.
+2. Add a joined local test for a second source item matching an approved pattern:
+   success/reject/repeat-run, no duplicate evidence or review, and no model-selected
+   unapproved target. Add stage-specific, body-free operational reason codes and
+   safe pending-draft retry/defer behavior.
+3. Regenerate `web/lib/generated/database.types.ts`; run database static/real
+   contracts. Because provider input behavior changed, run the protocol tests,
+   recorded eval, update the behavior manifest only from actual output, then check
+   the manifest.
+4. Finish D's capped live-eval workflow/budget enforcement and exact-source
+   activation recommendations, then audit publishing/backup workflow files and
+   run the six final commands serially. Update BLOCKED and this handoff from the
+   actual outputs.
+
+Key local evidence already produced under ignored `work/` includes
+`work/launch-readiness/backup-e2e-d46f3cec0201/report.json` and
+`work/launch-readiness/recovery-3b199ae414a3/report.json`. Disposable evidence is
+useful context, not a substitute for rerunning checks invalidated by later edits.
+
+## Active offline readiness task
+
+Rui approved Decision 011 on 2026-09-18. Resume by reading [PROGRESS.md](PROGRESS.md)
+and [BLOCKED.md](BLOCKED.md), then the active authorization in AGENTS.md. These files
+supersede the historical next-step list below for this task. Do not probe existing
+hosted previews or production services during this offline task. The concentrated
+activation draft is [ACTIVATION-CHECKLIST.md](ACTIVATION-CHECKLIST.md); it is not an
+activation approval. Rui removed the original 12-round total limit on 2026-09-20;
+continue until the full offline criteria pass or a genuine external dependency
+remains after all independent work. Preserve local evidence under work/.
+The historical sections below describe the pre-Decision-011 baseline. For current
+status, the paused-state section above, PROGRESS and BLOCKED take precedence.
 
 ## Current outcome
 
@@ -222,22 +314,24 @@ Relevant runbooks: [initial setup](runbooks/initial-setup.md),
 
 ## Start the next conversation with this
 
-> Read `AGENTS.md`, `docs/North Star.md`, and `docs/HANDOFF.md` completely. Verify the
-> working tree, latest GitHub CI, fixture-preview health, and the protected reviewer
-> preview. Continue with the first item in `Next implementation sequence`. All seven
-> production migrations and the Access-protected reviewer branch preview are active.
-> The Access + Supabase login/empty-queue/sign-out/route-guard smoke test
-> passed. Do not activate real collection, Gemini, production Supabase data movement,
-> R2 backups, DNS, production publication, or live
-> automatic publication without the repository's Decision Checkpoint and my explicit
-> `proceed`. Do not spawn sub-agents unless I explicitly ask.
+> Rui has asked to resume Decision 011. Read `AGENTS.md`, `docs/North Star.md`,
+> `docs/HANDOFF.md`, `docs/PROGRESS.md`, and `docs/BLOCKED.md` completely. Preserve
+> the uncommitted working tree. Start at “Unverified partial slice at pause”: rebuild
+> only a named disposable local Supabase stack from zero and validate migration 008
+> plus the durable existing-pattern path before broad tests. Do not inspect hosted
+> previews or production systems. Do not activate real collection, provider calls,
+> production data, R2 upload, Pages deployment, DNS, or live automatic publication.
+> Do not spawn sub-agents unless Rui explicitly asks.
 
 ## Repository hygiene at handoff
 
-- No sub-agents are running.
+- The dormant `/root/offline_deploy` child was interrupted when Rui paused;
+  no child agent should be running.
 - Do not amend, force-push, or rewrite the existing commits.
-- The working tree should be clean and `main` should match `origin/main`; verify rather
-  than assume this in the next conversation.
+- The working tree is intentionally not clean: it contains the complete uncommitted
+  Decision 011 work. Preserve it, inspect before editing, and do not reset or delete
+  unknown files. `main` was at `412950d` when paused; verify remote state only when
+  authorized and needed.
 - `AGENTS.md` records Rui's standing authorization to commit and push complete,
   verified, secret-free change sets for this open-source repository. Production data
   mutations, deployments, releases, DNS changes, force pushes, and history rewrites

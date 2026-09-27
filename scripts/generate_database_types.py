@@ -505,7 +505,7 @@ def parse_functions(sql: str) -> tuple[Function, ...]:
         close_index = find_matching_parenthesis(sql, open_index)
         header_tail = sql[close_index + 1 : close_index + 300]
         returns_match = re.search(
-            r"\breturns\s+(uuid|jsonb|void)\b", header_tail, re.IGNORECASE
+            r"\breturns\s+(uuid|jsonb|void|boolean)\b", header_tail, re.IGNORECASE
         )
         if not returns_match:
             raise ValueError(f"Cannot parse return type for public function {name}")

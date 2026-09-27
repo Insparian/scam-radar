@@ -94,3 +94,80 @@ test("admin fails closed when the production Auth client is not configured", asy
   ).toBeVisible();
   await expect(page.getByLabel("审核邮箱")).toHaveCount(0);
 });
+
+for (const width of [360, 390, 768, 1440]) {
+  test(`family path fits ${width}px and keeps search private`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const requests: string[] = [];
+    page.on("request", (request) => requests.push(request.url()));
+    await page.goto("/search/");
+    const input = page.getByLabel("只输入一个或几个关键词");
+    await input.focus();
+    await expect(input).toBeFocused();
+    await input.fill("百万保障");
+    await input.press("Enter");
+    await expect(
+      page.getByRole("heading", { name: /找到 1 条相似记录/ }),
+    ).toBeVisible();
+    expect(decodeURIComponent(page.url())).not.toContain("百万保障");
+    expect(
+      requests.some((url) => decodeURIComponent(url).includes("百万保障")),
+    ).toBe(false);
+    expect(
+      await page.evaluate(
+        () =>
+          Object.values(localStorage).join() +
+          Object.values(sessionStorage).join(),
+      ),
+    ).not.toContain("百万保障");
+    await page
+      .getByRole("link", { name: "“百万保障”假客服骗局", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "现在先做什么" }),
+    ).toBeVisible();
+    for (const path of [
+      "/",
+      "/search/",
+      "/scam/million-protection-fake-customer-service/",
+      "/404.html",
+    ]) {
+      await page.goto(path);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: testInfo.outputPath(
+          `${width}-${path.replaceAll("/", "_") || "home"}.png`,
+        ),
+        fullPage: true,
+      });
+    }
+  });
+}
+
+test("homepage search never puts a query in requests or history and refresh clears it", async ({
+  page,
+}) => {
+  const observed: string[] = [];
+  page.on("request", (request) =>
+    observed.push(
+      decodeURIComponent(request.url()) + (request.postData() ?? ""),
+    ),
+  );
+  await page.goto("/");
+  await page.getByLabel("搜索你遇到的可疑事情").fill("百万保障");
+  await page.getByRole("button", { name: "查一查" }).click();
+  await expect(
+    page.getByRole("heading", { name: /找到 1 条相似记录/ }),
+  ).toBeVisible();
+  expect(decodeURIComponent(page.url())).not.toContain("百万保障");
+  expect(observed.join()).not.toContain("百万保障");
+  await page.reload();
+  await expect(page.getByLabel("只输入一个或几个关键词")).toHaveValue("");
+  expect(observed.join()).not.toContain("百万保障");
+});

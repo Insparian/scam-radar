@@ -1,21 +1,11 @@
 import Link from "next/link";
 
+import { CategorySearchLinks } from "@/components/category-search-links";
 import { PatternCard } from "@/components/pattern-card";
 import { SearchEntry } from "@/components/search-entry";
 import { SiteFooter } from "@/components/site-footer";
-import { categoryLabel, formatChineseDate } from "@/lib/public-data/copy";
+import { formatChineseDate } from "@/lib/public-data/copy";
 import { getRelease } from "@/lib/public-data/load";
-
-const categories = [
-  "phone",
-  "wechat",
-  "investment",
-  "pension",
-  "health_products",
-  "family_impersonation",
-  "customer_service",
-  "collectibles",
-];
 
 export default function HomePage() {
   const release = getRelease();
@@ -104,6 +94,11 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="change-list">
+              {recentChanges.length === 0 && (
+                <p className="no-recent-changes">
+                  当前版本没有可公开的已核实记录。没有找到记录，不代表可疑消息安全；遇到索取验证码、转账或共享屏幕的要求，请先停下来并通过官方渠道核实。
+                </p>
+              )}
               {recentChanges.map((pattern, index) => (
                 <Link
                   className="change-row"
@@ -141,20 +136,7 @@ export default function HomePage() {
               <h2 id="categories-heading">常见骗局</h2>
             </div>
           </div>
-          <div className="category-grid">
-            {categories.map((category, index) => (
-              <Link
-                href={`/search/?q=${encodeURIComponent(categoryLabel(category))}`}
-                key={category}
-              >
-                <span className="category-number">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <strong>{categoryLabel(category)}</strong>
-                <span aria-hidden="true">↗</span>
-              </Link>
-            ))}
-          </div>
+          <CategorySearchLinks />
         </section>
 
         <section

@@ -35,7 +35,9 @@ export function AdminShell({
         </nav>
         <div className="admin-mode">
           <strong>AUTHENTICATED · SHADOW POLICY</strong>
-          <p>审核决定会写入生产数据库；自动候选仍不具备自动发布权限。</p>
+          <p>
+            审核决定会写入当前连接的审核数据库；自动候选仍不具备自动发布权限。
+          </p>
         </div>
         <div className="admin-session">
           <span>{reviewerEmail}</span>

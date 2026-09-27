@@ -20,6 +20,25 @@ if ! "$docker_bin" inspect "$CONTAINER_NAME" >/dev/null 2>&1; then
     exit 1
 fi
 
+if [ "${RUN_EXISTING_PATTERN_CONTRACT:-false}" = "true" ]; then
+    "$docker_bin" exec -i "$CONTAINER_NAME" \
+        psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+        < "$REPO_ROOT/supabase/tests/local_existing_pattern_contract.sql"
+    exit 0
+fi
+
 "$docker_bin" exec -i "$CONTAINER_NAME" \
     psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
     < "$REPO_ROOT/supabase/tests/local_policy_contract.sql"
+
+"$docker_bin" exec -i "$CONTAINER_NAME" \
+    psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+    < "$REPO_ROOT/supabase/tests/local_intake_contract.sql"
+
+"$docker_bin" exec -i "$CONTAINER_NAME" \
+    psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+    < "$REPO_ROOT/supabase/tests/local_orchestration_contract.sql"
+
+"$docker_bin" exec -i "$CONTAINER_NAME" \
+    psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+    < "$REPO_ROOT/supabase/tests/local_candidate_contract.sql"

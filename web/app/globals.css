@@ -538,6 +538,14 @@ a {
   border-top: 2px solid var(--ink);
 }
 
+.no-recent-changes {
+  margin: 0;
+  padding: 24px 10px;
+  border-bottom: 1px solid var(--line-dark);
+  color: var(--muted);
+  line-height: 1.75;
+}
+
 .change-row {
   min-height: 94px;
   display: grid;

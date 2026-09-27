@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { MAX_QUERY_LENGTH } from "@/lib/public-data/search";
 
+import { setPendingQuery } from "@/lib/public-data/search-handoff";
+
 export function SearchEntry({ compact = false }: { compact?: boolean }) {
   const [query, setQuery] = useState("");
   const router = useRouter();
@@ -12,7 +14,8 @@ export function SearchEntry({ compact = false }: { compact?: boolean }) {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = query.trim();
-    router.push(value ? `/search/?q=${encodeURIComponent(value)}` : "/search/");
+    setPendingQuery(value);
+    router.push("/search/");
   }
 
   return (

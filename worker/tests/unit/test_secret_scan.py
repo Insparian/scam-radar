@@ -31,3 +31,12 @@ def test_public_boundary_blocks_private_and_generated_files() -> None:
 
 def test_public_boundary_allows_documentation_and_fake_env_template() -> None:
     assert boundary_failures([Path("docs/architecture.md"), Path(".env.example")]) == []
+
+
+def test_export_inside_work_directory_is_not_exempt(tmp_path: Path) -> None:
+    from scripts.check_secrets import scan
+
+    root = tmp_path / "work" / "release"
+    root.mkdir(parents=True)
+    (root / "index.html").write_text("SUPABASE_SECRET_KEY")
+    assert scan(root, export=True)

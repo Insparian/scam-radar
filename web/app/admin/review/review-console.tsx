@@ -92,8 +92,17 @@ export function ReviewConsole() {
       <main id="main-content" className="admin-page admin-empty-state">
         <span className="admin-eyebrow">EXCEPTION REVIEW · 0 OPEN</span>
         <h1>目前没有需要人工决定的项目</h1>
-        <p>生产数据库的 reviewer 队列为空。无需为了维持产量而制造审核任务。</p>
-        {error && <div className="fixture-message">{error}</div>}
+        <p>当前审核队列为空。无需为了维持产量而制造审核任务。</p>
+        {message && (
+          <div className="review-message success" role="status">
+            {message}
+          </div>
+        )}
+        {error && (
+          <div className="review-message error" role="alert">
+            {error}
+          </div>
+        )}
       </main>
     );
   }

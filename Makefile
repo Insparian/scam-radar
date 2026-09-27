@@ -1,11 +1,13 @@
 SHELL := /bin/sh
+export NEXT_TELEMETRY_DISABLED := 1
 
 PYTHON := $(if $(wildcard worker/.venv/bin/python),$(abspath worker/.venv/bin/python),python3)
 UV ?= uv
+DOCKER_BIN ?= docker
 RELEASE_ID := fixture-2026-08-16-001
 FIXTURE_RELEASE := ../work/release/$(RELEASE_ID)/public-release.json
 
-.PHONY: bootstrap check test database-test eval demo web collect-dry-run open-source-audit pages-artifact-check
+.PHONY: recovery-rehearsal joined-local-e2e deployment-local-e2e bootstrap check test database-test eval demo web collect-dry-run open-source-audit pages-artifact-check
 
 bootstrap:
 	@command -v $(UV) >/dev/null 2>&1 || { echo "uv is required: https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
@@ -30,6 +32,22 @@ test:
 
 database-test:
 	./scripts/run_local_database_tests.sh
+	$(PYTHON) scripts/check_database_public_export.py
+	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_pipeline_e2e.py --full-review
+	RUN_EXISTING_PATTERN_CONTRACT=true ./scripts/run_local_database_tests.sh
+
+joined-local-e2e:
+	@case "$(SCAM_RADAR_LOCAL_API_URL)" in http://127.0.0.1:*) ;; *) echo "Set SCAM_RADAR_LOCAL_API_URL to an isolated localhost Supabase API." >&2; exit 1;; esac
+	@case "$(SUPABASE_DB_CONTAINER)" in supabase_db_scam-radar-*) ;; *) echo "Set SUPABASE_DB_CONTAINER to a named synthetic local stack." >&2; exit 1;; esac
+	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_pipeline_e2e.py --full-review --browser-review
+	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_pending_review_e2e.py
+	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_update_release_e2e.py
+
+deployment-local-e2e:
+	@case "$(SCAM_RADAR_LOCAL_API_URL)" in http://127.0.0.1:*) ;; *) echo "Set SCAM_RADAR_LOCAL_API_URL to an isolated localhost Supabase API." >&2; exit 1;; esac
+	@case "$(SUPABASE_DB_CONTAINER)" in supabase_db_scam-radar-*) ;; *) echo "Set SUPABASE_DB_CONTAINER to a named synthetic local stack." >&2; exit 1;; esac
+	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_pipeline_e2e.py --full-review --browser-review
+	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_deployment_e2e.py
 
 eval:
 	$(PYTHON) evals/run_recorded_eval.py
@@ -54,3 +72,8 @@ open-source-audit:
 	$(PYTHON) scripts/check_secrets.py --repo
 	$(PYTHON) scripts/check_secrets.py --history
 	$(PYTHON) scripts/check_public_boundary.py
+
+recovery-rehearsal:
+	@case "$(SUPABASE_DB_CONTAINER)" in supabase_db_scam-radar-*) ;; *) echo "Set SUPABASE_DB_CONTAINER to a named synthetic local stack." >&2; exit 1;; esac
+	$(PYTHON) scripts/rehearse_database_recovery.py --container $(SUPABASE_DB_CONTAINER) --age-directory work/launch-readiness/age
+	$(PYTHON) worker/tests/integration/local_backup_e2e.py --container $(SUPABASE_DB_CONTAINER) --docker "$(DOCKER_BIN)" --age-directory work/launch-readiness/age --rclone work/launch-readiness/rclone-mac-tool/rclone-v1.75.1-osx-arm64/rclone

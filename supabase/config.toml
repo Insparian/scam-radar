@@ -27,7 +27,9 @@ additional_redirect_urls = ["http://127.0.0.1:3000/admin/auth/callback"]
 enable_signup = false
 
 [auth.email]
-enable_signup = false
+# Keep global auth.enable_signup=false; email login must remain available for
+# admin-created, confirmed reviewer accounts.
+enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
 

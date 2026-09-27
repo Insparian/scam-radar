@@ -48,7 +48,7 @@ export default function AdminOverview() {
         <article>
           <span>开放审核项</span>
           <strong>{bootstrap ? queue.length : "—"}</strong>
-          <small>来自生产数据库的当前例外</small>
+          <small>来自当前审核数据库的例外</small>
         </article>
         <article>
           <span>等待决定</span>

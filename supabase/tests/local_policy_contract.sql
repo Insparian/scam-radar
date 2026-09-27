@@ -22,7 +22,18 @@ begin
         '20260816000400',
         '20260916000100',
         '20260916000200',
-        '20260917000100'
+        '20260917000100',
+        '20260918000100',
+        '20260920000100',
+        '20260920000200',
+        '20260920000300',
+        '20260920000400',
+        '20260920000500',
+        '20260920000600',
+        '20260920000700',
+        '20260920000800',
+        '20260920000900',
+        '20260920001000'
     ]::text[] then
         raise exception 'unexpected_migration_set: %', applied_versions;
     end if;
@@ -611,6 +622,7 @@ declare
     decision_id uuid;
     approved_revision_id uuid;
     bootstrap jsonb;
+    bootstrap_item jsonb;
 begin
     perform set_config(
         'request.jwt.claims',
@@ -628,20 +640,24 @@ begin
     from local_contract_context;
 
     bootstrap := public.get_reviewer_bootstrap();
+    select item.value into bootstrap_item
+    from jsonb_array_elements(bootstrap -> 'queue') as item(value)
+    where item.value ->> 'id' = 'a0000000-0000-4000-8000-000000000001';
 
     if bootstrap #>> '{reviewer,user_id}'
            <> 'eeeeeeee-0000-4000-8000-000000000001'
        or bootstrap #>> '{reviewer,role}' <> 'reviewer'
-       or jsonb_array_length(bootstrap -> 'queue') <> 1
-       or bootstrap #>> '{queue,0,id}'
-           <> 'a0000000-0000-4000-8000-000000000001'
-       or bootstrap #>> '{queue,0,pattern,draft_revision,id}'
+       or bootstrap_item is null
+       or (select count(*) from jsonb_array_elements(bootstrap -> 'queue') as item(value)
+           where item.value ->> 'id' = 'a0000000-0000-4000-8000-000000000001') <> 1
+       or bootstrap_item #>> '{pattern,draft_revision,id}'
            <> '60000000-0000-4000-8000-000000000001'
-       or bootstrap #>> '{queue,0,policy,id}' <> decision_id::text
-       or bootstrap #>> '{queue,0,evidence,0,id}'
+       or bootstrap_item #>> '{policy,id}' <> decision_id::text
+       or bootstrap_item #>> '{evidence,0,id}'
            <> '70000000-0000-4000-8000-000000000001'
-       or (bootstrap #> '{queue,0}') ? 'candidate_payload' then
-        raise exception 'reviewer_bootstrap_payload_invalid: %', bootstrap;
+       or exists(select 1 from jsonb_array_elements(bootstrap -> 'queue') as item(value)
+           where item.value ? 'candidate_payload') then
+        raise exception 'reviewer_bootstrap_payload_invalid';
     end if;
 
     begin
@@ -768,6 +784,47 @@ begin
                 raise exception 'wrong_revision_immutability_error [%] %', sqlstate, sqlerrm;
             end if;
     end;
+end;
+$$;
+
+do $$
+begin
+    perform set_config(
+        'request.jwt.claims',
+        '{"role":"authenticated","sub":"eeeeeeee-0000-4000-8000-000000000001"}',
+        true
+    );
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    insert into public.review_events (
+        id, actor_id, action, target_type, target_id, reason
+    ) values (
+        '90000000-0000-4000-8000-000000000009',
+        'eeeeeeee-0000-4000-8000-000000000001',
+        'attempt_draft_publication',
+        'pattern_revision',
+        '60000000-0000-4000-8000-000000000002',
+        'Synthetic negative publication test.'
+    );
+    begin
+        insert into public.publication_changes (
+            pattern_id, action, pattern_revision_id, requested_by, review_event_id, reason
+        ) values (
+            '50000000-0000-4000-8000-000000000002',
+            'publish',
+            '60000000-0000-4000-8000-000000000002',
+            'eeeeeeee-0000-4000-8000-000000000001',
+            '90000000-0000-4000-8000-000000000009',
+            'Synthetic negative publication test.'
+        );
+        raise exception 'expected_unapproved_revision_rejection';
+    exception
+        when others then
+            if sqlstate <> '23514'
+               or sqlerrm <> 'publication_requires_human_verified_revision' then
+                raise exception 'wrong_unapproved_revision_error [%] %', sqlstate, sqlerrm;
+            end if;
+    end;
+    raise notice 'RED rejected: unapproved revision';
 end;
 $$;
 
