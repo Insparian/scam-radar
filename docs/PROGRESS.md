@@ -83,6 +83,7 @@
 - 来源离线协议补强了两个失败关闭测试：发现站外文章 URL 时在文章请求前拒绝、栏目结构变动缺少正文时不生成证据；该组 5 项通过。真实栏目、条款、robots 与解析仍未访问，保留在集中授权包。
 - 最终同一代码状态的静态/浏览器/合成套件按顺序退出 0：`make check`（32 前端单元）、`make test`（119 Python、9 浏览器、0 跳过）、`make eval`（100 recorded、`launch_qualified=false`）、`make demo`（5 模式、100 静态文件）、`make collect-dry-run`（15 来源全部关闭）。日志分别为 `work/offline-resume-20260927/final-make-{check,test,eval,demo,collect-dry-run}.log`。
 - 汇总为 [离线验收报告](OFFLINE-ACCEPTANCE-REPORT.md)，开工 50 项测试/规格文件均仍存在；[BLOCKED.md](BLOCKED.md) 已仅保留真实来源、模型、生产备份、七天稳定性与大陆/微信访问等外部关卡。集中确认包保留现有精确批准门槛与未知 release/hash 空位；本轮外部激活为 0。
+- 已将白名单内 97 个经过验收的文件提交为 `f13dc08`（`Complete offline launch readiness paths`）。范围外开工遗留的根 `AGENTS.md`、`.codex/`、`DECISIONS/`、`web/AGENTS.md` 与 `web/CLAUDE.md` 原样留在工作区；没有 push、部署或外部激活。
 
 ## 开工回执（2026-09-18）
 1. 目标：全部离线上线准备；外部试运行与发布另行集中确认。
