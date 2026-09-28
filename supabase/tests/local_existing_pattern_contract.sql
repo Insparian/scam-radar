@@ -12,9 +12,12 @@ declare
     v_version uuid;
     v_claim jsonb;
     v_deferred_version uuid;
+    v_capped_version uuid;
     v_deferred_claim jsonb;
     v_receipt jsonb;
     v_replay jsonb;
+    v_recovery jsonb;
+    v_payload jsonb;
     v_expected_evidence_hash text;
     v_expected_content_hash text;
     v_text text := '合成来电索取验证码并要求转账。本地追加案例，仅供测试。';
@@ -44,6 +47,9 @@ begin
     where candidate.pattern_id = v_pattern.id;
     select * into v_base from public.pattern_revisions
     where id = v_pattern.latest_approved_revision_id;
+    v_payload := jsonb_build_object(
+        'synthetic',true,'matched_pattern_id',v_pattern.id,
+        'matched_revision_id',v_base.id,'comparison',v_match,'heat',v_heat);
     if not exists(select 1 from jsonb_array_elements(
         public.list_pattern_match_candidates(v_base.pattern_type,10)) as candidate
         where candidate->>'pattern_id' = v_pattern.id::text) then
@@ -65,7 +71,7 @@ begin
         perform public.submit_existing_pattern_evidence(
             v_version,'foreign-holder',v_run,v_pattern.id,v_base.id,
             '合成来电索取验证码并要求转账',v_match,v_heat,
-            '{"synthetic":true}'::jsonb,array['routine_case_review']);
+            v_payload,array['routine_case_review']);
         raise exception 'foreign_existing_claim_accepted';
     exception when insufficient_privilege then
         if sqlerrm <> 'existing_candidate_claim_invalid' then raise; end if;
@@ -75,7 +81,7 @@ begin
             v_version,v_run::text,v_run,v_pattern.id,v_base.id,
             '合成来电索取验证码并要求转账',
             jsonb_set(v_match,'{same_pattern}','false'::jsonb),v_heat,
-            '{"synthetic":true}'::jsonb,array['routine_case_review']);
+            v_payload,array['routine_case_review']);
         raise exception 'false_existing_match_accepted';
     exception when check_violation then
         if sqlerrm <> 'existing_candidate_shape_invalid' then raise; end if;
@@ -83,11 +89,39 @@ begin
     v_receipt := public.submit_existing_pattern_evidence(
         v_version,v_run::text,v_run,v_pattern.id,v_base.id,
         '合成来电索取验证码并要求转账',v_match,v_heat,
-        '{"synthetic":true}'::jsonb,array['routine_case_review']);
+        v_payload,array['routine_case_review']);
     v_replay := public.submit_existing_pattern_evidence(
         v_version,v_run::text,v_run,v_pattern.id,v_base.id,
         '合成来电索取验证码并要求转账',v_match,v_heat,
-        '{"synthetic":true}'::jsonb,array['routine_case_review']);
+        v_payload,array['routine_case_review']);
+    begin
+        perform public.get_existing_update_recovery(v_version,'foreign-holder');
+        raise exception 'foreign_existing_recovery_accepted';
+    exception when insufficient_privilege then
+        if sqlerrm <> 'existing_recovery_claim_invalid' then raise; end if;
+    end;
+    v_recovery := public.get_existing_update_recovery(v_version,v_run::text);
+    begin
+        perform public.submit_existing_pattern_evidence(
+            v_version,v_run::text,v_run,v_pattern.id,v_base.id,
+            '合成来电索取验证码并要求转账',v_match,
+            jsonb_set(v_heat,'{as_of}',to_jsonb((current_date - 1)::text)),
+            v_payload,array['routine_case_review']);
+        raise exception 'changed_heat_replay_accepted';
+    exception when check_violation then
+        if sqlerrm <> 'existing_candidate_replay_mismatch' then raise; end if;
+    end;
+    if v_recovery->>'pattern_id' <> v_receipt->>'pattern_id'
+       or v_recovery->>'revision_id' <> v_receipt->>'revision_id'
+       or v_recovery->>'review_item_id' <> v_receipt->>'review_item_id'
+       or v_recovery->>'evidence_id' <> v_receipt->>'evidence_id'
+       or v_recovery->>'candidate_hash' <> v_receipt->>'candidate_hash'
+       or v_recovery->>'missing_claim_count' <> '0'
+       or v_recovery->>'review_status' <> 'pending'
+       or v_recovery->>'policy_decision_id' is not null
+       or v_recovery->'candidate_payload' <> v_payload
+       or v_replay->>'missing_claim_count' <> v_receipt->>'missing_claim_count'
+    then raise exception 'existing_recovery_receipt_inconsistent'; end if;
     select encode(extensions.digest(convert_to(coalesce(string_agg(
         evidence.id::text || ':' || version.content_hash || ':' ||
         evidence.origin_group_key || ':' || evidence.evidence_family_id::text || ':' ||
@@ -131,7 +165,39 @@ begin
     then raise exception 'existing_update_transaction_incomplete'; end if;
     if has_function_privilege('authenticated',
         'public.submit_existing_pattern_evidence(uuid,text,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,text[])',
-        'execute') then raise exception 'human_can_submit_existing_evidence'; end if;
+        'execute')
+       or has_function_privilege('authenticated',
+           'public.get_existing_update_recovery(uuid,text)','execute')
+       or has_function_privilege('service_role',
+           'private.submit_existing_pattern_evidence(uuid,text,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,text[])',
+           'execute')
+    then raise exception 'existing_recovery_grants_invalid'; end if;
+    update public.source_item_versions set attempt_count = 3,
+        claimed_until = now() - interval '1 second'
+    where id = v_version;
+    v_claim := public.claim_source_version(v_source_key,'recovery-after-cap',300);
+    if v_claim->>'version_id' <> v_version::text
+       or (select attempt_count from public.source_item_versions where id = v_version) <> 4
+    then raise exception 'committed_update_retry_cap_stranded'; end if;
+    begin
+        perform public.get_existing_update_recovery(v_version,v_run::text);
+        raise exception 'expired_original_holder_recovered_update';
+    exception when insufficient_privilege then
+        if sqlerrm <> 'existing_recovery_claim_invalid' then raise; end if;
+    end;
+    if (public.get_existing_update_recovery(v_version,'recovery-after-cap')
+       ->>'review_item_id') <> v_receipt->>'review_item_id'
+    then raise exception 'replacement_holder_receipt_mismatch'; end if;
+    v_capped_version := public.ingest_source_version(
+        v_source_key,'uncommitted-retry-cap-contract',
+        'https://alerts.example.invalid/notices/uncommitted-retry-cap-contract',
+        '合成未提交上限案例',v_text,
+        encode(extensions.digest(convert_to('合成未提交上限案例' || E'\n' || v_text,
+            'UTF8'),'sha256'),'hex'),current_date::timestamptz);
+    update public.source_item_versions set attempt_count = 3
+    where id = v_capped_version;
+    if public.claim_source_version(v_source_key,'recovery-after-cap',300) is not null
+    then raise exception 'uncommitted_retry_cap_weakened'; end if;
     v_deferred_version := public.ingest_source_version(
         v_source_key,'existing-pattern-deferred-contract',
         'https://alerts.example.invalid/notices/existing-pattern-deferred-contract',
@@ -158,7 +224,7 @@ begin
        or has_function_privilege('authenticated',
             'public.defer_source_version_for_review(uuid,text,uuid)','execute')
     then raise exception 'pending_review_deferral_incomplete'; end if;
-    raise notice 'existing-pattern red/green: foreign claim and false match rejected; one proposed evidence, copied supported draft, replay, and no-budget pending deferral passed';
+    raise notice 'existing-pattern red/green: foreign claim and changed-heat replay rejected; committed update bypassed old retry cap, uncommitted cap retained, no-budget deferral passed';
 end;
 $$;
 rollback;

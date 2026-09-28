@@ -1,5 +1,73 @@
 # V0.1 offline launch readiness
 
+## 2026-09-29 最终联合与发布验收
+
+- 全新 20 迁移隔离栈 `scam-radar-crash-final-joined` 上，`make joined-local-e2e` 退出 0：新骗局、已有骗局追加证据、四个真实中断/丢响应点、连续三次中断、待审冲突、浏览器批准/拒绝、不可变 release、360/390/768/1440 宽度均通过。证据 `work/crash-recovery-20260928/final20-joined-local-e2e.log`。
+- 全新 20 迁移隔离栈 `scam-radar-crash-final-deploy` 上，`make deployment-local-e2e` 首次在沙箱内 Docker inspect 容器时退出 2，尚未执行发布逻辑；获准访问本地 Docker 后重跑退出 0，实际验证上传未登记对账、旧版拒绝、原产物回退、失败上传撤回。首次错误由工具调用输出记录，绿证据 `work/crash-recovery-20260928/final20-deployment-local-e2e.log`。下一步新库恢复验收及报告。
+- `scam-radar-crash-final-db20` 重启原全新库后，`make recovery-rehearsal` 退出 0：26 表、新库权限、同一 release 核对通过；`pg_dump→age→本地 S3→读回→解密` 和密文篡改拒绝通过，外部上传 false。证据 `work/crash-recovery-20260928/final20-recovery-rehearsal.log`、`work/launch-readiness/recovery-93263df2160d/report.json`、`work/launch-readiness/backup-e2e-163ed1910dd4/report.json`。
+- 最终九个根命令对同一 20 迁移代码状态均退出 0；P1 现可关闭。下一步同步验收报告、核对 git 差异及提交本轮范围内文件；不会触及外部激活。
+
+## 2026-09-28 P1 修复开工回执
+1. 基线 `6836f67`；保留原有 AGENTS/决策和 2026-09-28 复核文档未提交差异。
+2. 第九个具名隔离栈 `scam-radar-crash-red` 从零应用 18 迁移，`make database-test` 退出 0，证据 `work/crash-recovery-20260928/`。
+3. 事务提交后注入进程退出 73：版本 `processing:1`、收据 1、Policy 0；租约到期后重启仍 `degraded/pending_review_deferred=1`，原版红证据 `red-*.log`。
+4. 根因已证实：`durable.py` 在寻找本版本持久收据前先把其待审草稿视为跨任务冲突；SQL 重放还少 `missing_claim_count`，候选哈希含随日期变化的 Heat，不能靠重新提交代替恢复。
+5. 方案：前向新增仅 service 可读、受当前认领约束的恢复收据 RPC；优先恢复原事务、核对已有 Policy，缺失时从持久候选资料补录，再按正常认领完成版本。
+6. 顺序：仓库化真实进程中断回归红→绿 → 新库 SQL/权限负例 → 最终全部根命令串行复验。
+7. 最大风险：Policy 响应丢失后新 run 重放形成重复决策，或人工已批准/拒绝时覆盖原结果；回归必须断言原 ID/计数和审核状态不变。
+
+### 仓库化中断回归红灯
+
+- 新增 `worker/tests/integration/local_existing_crash_e2e.py`，以真实子进程在 PostgREST 事务提交后退出并读取数据库 ID/计数、游标与状态。首跑时旧红库的待审草稿影响新来源，已隔离重建；随后发现测试模拟的租约时间违反数据库 `expires_at > acquired_at` 约束，已修正注入时间顺序，没有改业务断言。
+- 在第二个从零迁移的具名库 `scam-radar-crash-regression-red` 上，回归同一子进程/快照断言得到目标红灯：重启前 `processing:1`、收据/证据/修订/审核各 1、Policy 0；重启后仍 `degraded/pending_review_conflict`、游标空、Policy 0。证据 `work/crash-recovery-20260928/repository-target-red.log`。接下来实施收据恢复。
+
+### 原中断收据补全的第一项绿证据
+
+- 新前向迁移 011 在一次性红灯库应用：旧事务写入函数移到私有 schema，公开 wrapper 补齐首次/重放回执字段；新增只对当前 service 认领可见的收据/Policy 恢复 RPC。worker 在匹配候选前优先恢复自己已提交的收据，Policy 已在库则不重写，缺失才从持久候选内容补录。
+- 用上述红灯库的**原始孤儿收据**验证：重启从 `pending_ai`、收据 1/Policy 0 自动转为 `processed`、收据 1/Policy 1，游标推进且模型调用 0；证据 `work/crash-recovery-20260928/recovery-migration-probe.log`、`orphan-recovery-probe.log`。此为旧库探针，最终全新 19 迁移根验收仍待执行。
+
+### 全新 19 迁移数据库根验收
+
+- 具名隔离栈 `scam-radar-crash-green` 从零应用 19 个迁移；`make database-test` 退出 0。新增 SQL 断言确认外来持有者不能读取恢复收据、首次与精确重放字段一致、日期变化的 Heat 重放被拒绝，而受限恢复收据仍能读取原事务；基础 RLS/Auth/发布和 localhost 模型链照常通过。证据 `work/crash-recovery-20260928/green-stack-start.log`、`green-database-test.log`。下一步跑四个真实进程/响应中断场景。
+
+### 四个真实中断/丢响应回归通过
+
+- `local_existing_crash_e2e.py` 在同一全新库退出 0：证据提交后进程退出、Policy 已提交但版本未完成时进程退出并在人工批准/拒绝后恢复、以及数据库已提交但客户端丢失成功响应，均自动续完。每条校验原证据/修订/审核 ID、Policy 恰好 1、版本 processed、游标推进，随后重复运行数据库快照与模型调用均不变。
+- 另一个来源在本来源待审时仍被延后、重试次数保持 0，人工拒绝后自动恢复；浏览器审核的原批准/拒绝决定和已批准旧版本均保持。证据 `work/crash-recovery-20260928/green-crash-regression.log`。回归已接入 `make joined-local-e2e`，最终根命令和独立新栈复跑仍待完成。
+
+### 最终静态/浏览器/合成套件第一段
+
+- 按最终修复代码顺序运行 `make check`、`make test`、`make eval`、`make demo`、`make collect-dry-run`，均退出 0：119 Python、32 前端单元、9 浏览器、100 recorded、100 静态文件，0 跳过；15 个真实来源仍关闭，`launch_qualified=false`。证据 `work/crash-recovery-20260928/final-{check,test,eval,demo,collect-dry-run}.log`。行为清单 hash 未变，因为本轮未改其覆盖的 prompt/schema/model 等文件；下一步在独立新栈复跑根数据库、joined、deployment、recovery。
+
+### 连续中断仍会卡死的第二层根因与修复
+
+- 在新合成库对同一已提交事务连续注入三次“完成版本前进程退出”，原 `attempt_count < 3` 使第四轮连版本都无法认领；worker 却报告 success，版本继续 processing。目标红证据 `work/crash-recovery-20260928/repeated-crash-red.log`。这是同一 P1 的残留，不把先前四场景绿灯冒充完成。
+- 前向迁移 012 仅对 `source_version_updates` 已有持久收据的版本允许超过旧认领上限；无收据的版本仍保留三次上限。将 012 只应用到上述红灯库后，原版本从 attempt 3 自动恢复为 processed/attempt 4，证据、修订、审核、Policy ID 全部相同且模型调用 0。证据 `retry-cap-migration-probe.log`、`repeated-crash-orphan-green.log`。最终需从零建立 20 迁移库并重跑所有根命令。
+
+### 最终 20 迁移代码的串行套件前五项
+
+- `make check`、`make test`、`make eval`、`make demo`、`make collect-dry-run` 依次退出 0：119 Python、32 前端单元、9 浏览器、100 recorded、100 静态文件，0 跳过；15 来源 disabled、`launch_qualified=false`。证据 `work/crash-recovery-20260928/final20-{check,test,eval,demo,collect-dry-run}.log`。后四个数据库/发布/恢复根命令仍待全新 20 迁移库。
+- 第六项 `make database-test` 在新建 `scam-radar-crash-final-db20` 栈（20 个迁移从零）退出 0：原权限/审核/导出与新“已提交事务超过 3 次仍可认领、未提交事务仍封顶”的 SQL 反向断言全部通过。证据 `final-db20-start.log`、`final20-database-test.log`。后续 joined/deployment/recovery 按顺序待执行。
+
+## 2026-09-28 leader 独立复核 — 未通过
+
+- 复核提交 `6836f67` / `f13dc08`；保护原有 AGENTS/决策/工具未提交文件，未改产品代码。
+- 独立复跑 `make check`、`make test`、`make eval`、`make demo`、
+  `make collect-dry-run` 均退出 0：32 前端单元、119 Python、9 浏览器、
+  100 合成评测、100 静态文件；15 个真实来源全部关闭。
+- 专用 `scam-radar-audit-20260928` 栈从零应用 18 个迁移；
+  `make database-test` 与 `make recovery-rehearsal` 退出 0，恢复 26 表并核对
+  同一 release/权限，本机 S3 回读/篡改拒绝通过。日志 `work/leader-re*.log`。
+- 额外独立抽查：篡改搜索 release 被拒绝，恢复后通过且原产物未变；
+  两次 localhost 模型超时均预留费用，第三次在网络请求前因调用上限拒绝。
+- **新增 P1：** 追加证据事务已提交后立即结束进程，认领过期后重启两次，
+  均被自己的待审草稿挡住；版本保持 pending_ai、关联 Policy 记录 0。
+  证据 `work/leader-crash-audit.log`，根因与修复验收要求见 `docs/BLOCKED.md`。
+  现有明卷全绿不足以证明中断恢复完成；本次未重跑 joined/deployment 根目标，
+  未对完整离线就绪签字。下一步应修复此恢复路径后再完成复核。
+- 所有验证仅在本地合成数据上进行；未启用真实采集、模型、生产访问、外部
+  备份上传、发布或 DNS，未提交或推送本次复核记录。
+
 ## 2026-09-27 续工开工回执
 1. 目标：代码与本地全流程离线就绪；外部试运行和正式发布留待集中确认。
 2. 顺序：冻结基线 → 全新隔离库/追加证据 → 两条持久化链 → 运行与评测 → 网页 → 发布恢复 → 串行总验收。

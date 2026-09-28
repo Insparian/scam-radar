@@ -40,6 +40,7 @@ joined-local-e2e:
 	@case "$(SCAM_RADAR_LOCAL_API_URL)" in http://127.0.0.1:*) ;; *) echo "Set SCAM_RADAR_LOCAL_API_URL to an isolated localhost Supabase API." >&2; exit 1;; esac
 	@case "$(SUPABASE_DB_CONTAINER)" in supabase_db_scam-radar-*) ;; *) echo "Set SUPABASE_DB_CONTAINER to a named synthetic local stack." >&2; exit 1;; esac
 	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_pipeline_e2e.py --full-review --browser-review
+	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_existing_crash_e2e.py
 	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_pending_review_e2e.py
 	PYTHONPATH=worker/src $(PYTHON) worker/tests/integration/local_update_release_e2e.py
 

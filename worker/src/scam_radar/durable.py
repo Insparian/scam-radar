@@ -16,6 +16,7 @@ from scam_radar.domain import (
     EvidenceRecord,
     ExtractionResult,
     GateCandidate,
+    GateDecision,
     HeatFeatures,
     LegalStatus,
     PatternComparisonResult,
@@ -270,6 +271,13 @@ class DurablePipeline:
         clean_text = claim["clean_text"]
         if not isinstance(clean_text, str) or not clean_text:
             raise ValueError("claimed_text_missing")
+        try:
+            recovery = self.store.get_existing_update_recovery(version_id, run_id)
+        except Exception as error:
+            raise StageFailure("existing_recovery_read_failed") from error
+        if recovery is not None:
+            self._complete_recovered_update(version_id, clean_text, run_id, recovery)
+            return True, False
         relevance = self._artifact(version_id, "relevance-v1", clean_text, RelevanceResult)
         if not relevance.relevant:
             self.store.finish_version(version_id, run_id, "irrelevant")
@@ -385,6 +393,8 @@ class DurablePipeline:
             "comparison": comparison.model_dump(mode="json"),
             "unmapped_fields": sorted(required - mapped),
         }
+        if matched:
+            payload["policy_relevance_confidence"] = relevance.confidence
         try:
             if matched:
                 payload["matched_pattern_id"] = matched["pattern_id"]
@@ -459,6 +469,76 @@ class DurablePipeline:
         except Exception as error:
             raise StageFailure("version_finish_failed") from error
         return True, True
+
+    def _complete_recovered_update(
+        self, version_id: str, clean_text: str, run_id: str, receipt: dict[str, Any]
+    ) -> None:
+        if receipt["policy_decision_id"] is None:
+            payload = receipt["candidate_payload"]
+            try:
+                gate = GateDecision.model_validate(payload["gate"])
+                comparison = PatternComparisonResult.model_validate(payload["comparison"])
+                if (
+                    not comparison.same_pattern
+                    or payload["matched_pattern_id"] != receipt["pattern_id"]
+                    or payload["matched_revision_id"] is None
+                    or receipt["review_status"] != "pending"
+                ):
+                    raise ValueError("existing_recovery_candidate_mismatch")
+                confidence = payload.get("policy_relevance_confidence")
+                if confidence is None:
+                    relevance = self._artifact(
+                        version_id, "relevance-v1", clean_text, RelevanceResult
+                    )
+                    if not relevance.relevant:
+                        raise ValueError("existing_recovery_relevance_changed")
+                    confidence = relevance.confidence
+                policy_input = PolicyInput(
+                    target_id=receipt["pattern_id"],
+                    candidate_hash=receipt["candidate_hash"],
+                    gate_version=gate.version,
+                    review_type="pattern_update",
+                    gate_outcome=gate.outcome,
+                    evidence_level=gate.evidence_level,
+                    existing_public_pattern=True,
+                    material_change=comparison.material_change,
+                    public_copy_changed=False,
+                    claims_fully_supported=True,
+                    all_supporting_evidence_verified=True,
+                    named_entity_risk=False,
+                    legal_status_changed=False,
+                    evidence_level_changed=False,
+                    source_regression=False,
+                    requires_merge_or_split=False,
+                    relevance_confidence=confidence,
+                    pattern_match_confidence=comparison.confidence,
+                )
+                decision = evaluate_policy(self.policy, policy_input)
+            except Exception as error:
+                raise StageFailure("existing_recovery_policy_input_invalid") from error
+            try:
+                self.store.record_policy(
+                    review_item_id=receipt["review_item_id"],
+                    revision_id=receipt["revision_id"],
+                    run_id=run_id,
+                    policy_version=decision.policy_version,
+                    policy_hash=decision.policy_hash,
+                    input_hash=decision.input_hash,
+                    gate_version=decision.gate_version,
+                    gate_outcome=gate.outcome.value,
+                    rules_outcome=decision.rules_outcome.value,
+                    decision_outcome=decision.outcome.value,
+                    execution_mode="shadow",
+                    reason_codes=decision.reason_codes,
+                    model_confidence=confidence,
+                    model_confidence_downgrade=decision.model_confidence_downgrade,
+                )
+            except Exception as error:
+                raise StageFailure("policy_record_failed") from error
+        try:
+            self.store.finish_version(version_id, run_id, "processed")
+        except Exception as error:
+            raise StageFailure("version_finish_failed") from error
 
     def run(
         self,

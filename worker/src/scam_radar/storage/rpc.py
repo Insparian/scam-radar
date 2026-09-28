@@ -371,6 +371,39 @@ class RpcStore:
             raise ValueError("invalid_existing_candidate_hash")
         return receipt
 
+    def get_existing_update_recovery(self, version_id: str, holder: str) -> dict[str, Any] | None:
+        receipt = self.call(
+            "get_existing_update_recovery",
+            {"p_version_id": version_id, "p_holder_id": holder},
+        )
+        if receipt is None:
+            return None
+        if not isinstance(receipt, dict):
+            raise ValueError("invalid_existing_recovery_receipt")
+        for key in ("pattern_id", "revision_id", "evidence_id", "review_item_id"):
+            self._uuid(receipt.get(key), f"existing_recovery_{key}")
+        if not isinstance(receipt.get("candidate_hash"), str) or not re.fullmatch(
+            r"[0-9a-f]{64}", receipt["candidate_hash"]
+        ):
+            raise ValueError("invalid_existing_recovery_hash")
+        if receipt.get("missing_claim_count") != 0 or not isinstance(
+            receipt.get("candidate_payload"), dict
+        ):
+            raise ValueError("invalid_existing_recovery_payload")
+        if receipt.get("review_status") not in {
+            "pending",
+            "in_review",
+            "needs_evidence",
+            "approved",
+            "rejected",
+            "merged",
+        }:
+            raise ValueError("invalid_existing_recovery_review_status")
+        decision_id = receipt.get("policy_decision_id")
+        if decision_id is not None:
+            self._uuid(decision_id, "existing_recovery_policy_decision")
+        return receipt
+
     def record_policy(
         self,
         *,
