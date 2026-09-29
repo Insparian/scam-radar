@@ -67,6 +67,8 @@ SERVICE_FUNCTIONS = {
     "submit_new_pattern_candidate",
     "list_pattern_match_candidates",
     "submit_existing_pattern_evidence",
+    "get_existing_update_recovery",
+    "defer_recovered_update_for_review",
     "prepare_public_release",
     "export_public_release",
     "mark_release_deploying",

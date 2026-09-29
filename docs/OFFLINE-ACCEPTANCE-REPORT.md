@@ -1,6 +1,26 @@
 # Scam Radar V0.1 离线验收报告 — 2026-09-29
 
-## 2026-09-29 独立 P1 复核与最终验收
+## 2026-09-29 第二次独立反例修复：21 迁移最终状态
+
+**结论：离线就绪，待最终集中确认。** 上一节的 20 迁移结果曾漏掉“提交证据后、Policy 前，审核员先拒绝”时序；独立复核因此正确地重新打开 P1。现以第 21 个前向迁移核验真实人工拒绝事件及证据/草稿终态；终态已拒绝的候选无法再合法写 Policy，worker 在确认无公开批准后完成来源并推进游标。待审/审核中草稿继续补真实 shadow Policy；新暂缓状态保留原 row_version，补 Policy 后仍由人工决定；旧暂缓状态安全归还认领、不耗重试，人工拒绝后恢复旧批准模式可匹配状态。无收据、伪造拒绝事件、越权角色和旧认领仍被拒绝。
+
+独立复核的**原脚本** `work/leader29-early-reject.py` 未改动：原红 `work/leader29-early-reject.log` 四次重启均失败、游标为空；本轮在最终 21 迁移新栈复跑退出 0，第一次重启即 processed 且游标推进，后三次 ID、计数、人工拒绝、Policy 0 均不变，绿证据 `work/leader29-independent-repro-green.log`。仓库回归还通过了 Policy 已存在后的批准/拒绝、提交成功响应丢失、连续三次退出、暂缓后浏览器批准、旧暂缓后拒绝、跨来源待审冲突。新 SQL 契约在事务回滚中拒绝没有人工事件的伪造终态和无资格的暂缓 RPC。
+
+| 最终命令 | 退出码 | 实测结果 | ignored `work/` 证据 |
+| --- | ---: | --- | --- |
+| `make check` | 0 | Python 格式/lint、类型、生成类型、权限边界、前端单元 32/0/0 | `leader29-final21-check.log` |
+| `make test` | 0 | Python 119/0/0、Chromium 9/0/0 | `leader29-final21-test.log` |
+| `make eval` | 0 | recorded 100/0/0，`launch_qualified=false` | `leader29-final21-eval.log` |
+| `make demo` | 0 | 100 个静态文件与秘密扫描 | `leader29-final21-demo.log` |
+| `make collect-dry-run` | 0 | 15 个真实来源 disabled | `leader29-final21-collect.log` |
+| `make database-test` | 0 | 独立新库从零应用 21 迁移，SQL 权限与新骗局持久化通过 | `leader29-accept-db-start.log`、`leader29-accept-database-test.log` |
+| `make joined-local-e2e` | 0 | 另一新库的两条持久化链、真实中断/浏览器审核、同一 release 四宽度通过 | `leader29-accept-joined-start.log`、`leader29-accept-joined.log` |
+| `make deployment-local-e2e` | 0 | 第三新库的本地上传、登记丢失对账、旧版拒绝、原产物回退通过 | `leader29-accept-deploy-start.log`、`leader29-accept-deploy.log` |
+| `make recovery-rehearsal` | 0 | 26 表、新库权限/同一 release；本地密文回读和篡改拒绝通过 | `leader29-accept-recovery.log` |
+
+恢复细报告为 `work/launch-readiness/recovery-87745a7474fc/report.json`、`backup-e2e-c97ec4ef1fdc/report.json`：`exact_release_equal=true`、`worker_cannot_approve=true`、`tampered_ciphertext_rejected=true`、`uploaded=false`。一次 `make test` 在沙箱内因 localhost socket 权限及 RPC 静态清单漏列而红，后以获准本地 socket 权限和更完整的权限契约修复；一次在已写入验收数据的库重跑全量 database-test 因旧测试的可变基线红，最终使用三套重新从零建的库一次性验收。真实采集、模型、生产读写、备份上传、发布、DNS 均为 0；真实质量、七天稳定性及大陆/微信访问仍未验证，`launch_qualified=false`。以下 20 迁移结果仅作历史记录。
+
+## 2026-09-29 首次 P1 修复验收（20 迁移，历史，后被独立反例推翻）
 
 **结论：离线就绪，待最终集中确认。** 2026-09-28 的独立复核推翻了本报告 9 月 27 日的完成结论：已有骗局追加证据事务提交后若进程退出，重启会被自己留下的待审草稿挡住。修复后，当前 20 个前向迁移和同一代码状态已在独立、从零建立的本地栈完成下列九项根验收。此结论仅覆盖本机合成数据；真实质量、七天稳定性和大陆/微信访问没有验证，`launch_qualified=false`。
 

@@ -18,6 +18,7 @@ declare
     v_replay jsonb;
     v_recovery jsonb;
     v_payload jsonb;
+    v_actor uuid;
     v_expected_evidence_hash text;
     v_expected_content_hash text;
     v_text text := '合成来电索取验证码并要求转账。本地追加案例，仅供测试。';
@@ -102,6 +103,30 @@ begin
     end;
     v_recovery := public.get_existing_update_recovery(v_version,v_run::text);
     begin
+        perform public.defer_recovered_update_for_review(v_version,v_run::text);
+        raise exception 'unheld_update_was_deferred';
+    exception when insufficient_privilege then
+        if sqlerrm <> 'existing_hold_deferral_invalid' then raise; end if;
+    end;
+    begin
+        select user_id into v_actor from public.admin_users where enabled limit 1;
+        perform set_config('request.jwt.claims',
+            jsonb_build_object('role','authenticated','sub',v_actor)::text,true);
+        perform set_config('request.jwt.claim.role','authenticated',true);
+        perform set_config('request.jwt.claim.sub',v_actor::text,true);
+        update public.review_items set status = 'rejected',
+            assigned_to = v_actor,
+            decision_note = 'synthetic forged terminal state', resolved_at = now()
+        where id = (v_receipt->>'review_item_id')::uuid;
+        perform set_config('request.jwt.claims','{"role":"service_role"}',true);
+        perform set_config('request.jwt.claim.role','service_role',true);
+        perform set_config('request.jwt.claim.sub','',true);
+        perform public.get_existing_update_recovery(v_version,v_run::text);
+        raise exception 'rejection_without_human_event_accepted';
+    exception when check_violation then
+        if sqlerrm <> 'existing_recovery_rejection_invalid' then raise; end if;
+    end;
+    begin
         perform public.submit_existing_pattern_evidence(
             v_version,v_run::text,v_run,v_pattern.id,v_base.id,
             '合成来电索取验证码并要求转账',v_match,
@@ -118,6 +143,7 @@ begin
        or v_recovery->>'candidate_hash' <> v_receipt->>'candidate_hash'
        or v_recovery->>'missing_claim_count' <> '0'
        or v_recovery->>'review_status' <> 'pending'
+       or v_recovery->>'policy_recordable' <> 'true'
        or v_recovery->>'policy_decision_id' is not null
        or v_recovery->'candidate_payload' <> v_payload
        or v_replay->>'missing_claim_count' <> v_receipt->>'missing_claim_count'
@@ -168,6 +194,8 @@ begin
         'execute')
        or has_function_privilege('authenticated',
            'public.get_existing_update_recovery(uuid,text)','execute')
+       or has_function_privilege('authenticated',
+           'public.defer_recovered_update_for_review(uuid,text)','execute')
        or has_function_privilege('service_role',
            'private.submit_existing_pattern_evidence(uuid,text,uuid,uuid,uuid,text,jsonb,jsonb,jsonb,text[])',
            'execute')

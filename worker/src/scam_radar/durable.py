@@ -39,6 +39,10 @@ class PendingReviewConflict(Exception):
         self.pattern_id = pattern_id
 
 
+class PendingEvidenceHold(Exception):
+    pass
+
+
 class StageFailure(Exception):
     def __init__(self, code: str) -> None:
         super().__init__(code)
@@ -474,6 +478,14 @@ class DurablePipeline:
         self, version_id: str, clean_text: str, run_id: str, receipt: dict[str, Any]
     ) -> None:
         if receipt["policy_decision_id"] is None:
+            if receipt["review_status"] == "needs_evidence" and not receipt["policy_recordable"]:
+                raise PendingEvidenceHold("awaiting_evidence_review")
+            if receipt["review_status"] == "rejected":
+                try:
+                    self.store.finish_version(version_id, run_id, "processed")
+                except Exception as error:
+                    raise StageFailure("version_finish_failed") from error
+                return
             payload = receipt["candidate_payload"]
             try:
                 gate = GateDecision.model_validate(payload["gate"])
@@ -482,7 +494,8 @@ class DurablePipeline:
                     not comparison.same_pattern
                     or payload["matched_pattern_id"] != receipt["pattern_id"]
                     or payload["matched_revision_id"] is None
-                    or receipt["review_status"] != "pending"
+                    or receipt["review_status"] not in {"pending", "in_review", "needs_evidence"}
+                    or not receipt["policy_recordable"]
                 ):
                     raise ValueError("existing_recovery_candidate_mismatch")
                 confidence = payload.get("policy_relevance_confidence")
@@ -581,6 +594,7 @@ class DurablePipeline:
                 continue
             source_failed = False
             source_deferred = False
+            source_deferral_code: str | None = None
             source_error_code: str | None = None
             source_stage = "source_discovery_failed"
             cursor: str | None = None
@@ -605,12 +619,21 @@ class DurablePipeline:
                         relevant, queued = self._process_claim(source, claim, run_id)
                         counts["relevant"] += int(relevant)
                         counts["review_items"] += int(queued)
+                    except PendingEvidenceHold:
+                        source_stage = "evidence_hold_deferral_failed"
+                        self.store.defer_recovered_update_for_review(claim["version_id"], run_id)
+                        source_deferred = True
+                        source_deferral_code = "awaiting_evidence_review"
+                        counts["evidence_review_deferred"] += 1
+                        run_error_codes.add("awaiting_evidence_review")
+                        break
                     except PendingReviewConflict as conflict:
                         source_stage = "review_deferral_failed"
                         self.store.defer_version_for_review(
                             claim["version_id"], run_id, conflict.pattern_id
                         )
                         source_deferred = True
+                        source_deferral_code = "pending_review_conflict"
                         counts["pending_review_deferred"] += 1
                         run_error_codes.add("pending_review_conflict")
                         break
@@ -643,7 +666,7 @@ class DurablePipeline:
                     error_code=(
                         source_error_code
                         if source_failed
-                        else "pending_review_conflict"
+                        else source_deferral_code
                         if source_deferred
                         else None
                     ),
@@ -670,6 +693,7 @@ class DurablePipeline:
             if counts["analysis_failures"]
             or counts["source_failures"]
             or counts["pending_review_deferred"]
+            or counts["evidence_review_deferred"]
             or counts["source_lease_conflicts"]
             else "success"
         )

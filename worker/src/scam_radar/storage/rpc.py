@@ -183,6 +183,12 @@ class RpcStore:
             },
         )
 
+    def defer_recovered_update_for_review(self, version_id: str, holder: str) -> None:
+        self.call(
+            "defer_recovered_update_for_review",
+            {"p_version_id": version_id, "p_holder_id": holder},
+        )
+
     def checkpoint_source(
         self,
         source_key: str,
@@ -390,6 +396,8 @@ class RpcStore:
             receipt.get("candidate_payload"), dict
         ):
             raise ValueError("invalid_existing_recovery_payload")
+        if not isinstance(receipt.get("policy_recordable"), bool):
+            raise ValueError("invalid_existing_recovery_policy_recordable")
         if receipt.get("review_status") not in {
             "pending",
             "in_review",

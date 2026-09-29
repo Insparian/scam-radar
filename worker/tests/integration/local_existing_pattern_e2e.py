@@ -37,7 +37,8 @@ def review_pending_update(decision: str) -> None:
         "join public.pattern_revisions as base "
         "on base.id=pattern.latest_approved_revision_id "
         "join public.review_items as review on review.id=update_item.review_item_id "
-        "where review.status='pending' order by review.created_at desc limit 1"
+        "where review.status in ('pending','needs_evidence') "
+        "order by review.created_at desc limit 1"
     )
     if not pending:
         raise AssertionError("local_pending_update_required")

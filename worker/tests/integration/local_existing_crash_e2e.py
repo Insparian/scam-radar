@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import secrets
 import subprocess
 import sys
 from uuid import uuid4
@@ -14,6 +15,7 @@ from local_pipeline_e2e import (
     LOCAL_API,
     ROOT,
     LocalSourceTransport,
+    _post_json,
     local_keys,
     protocol_server,
     sql_scalar,
@@ -181,15 +183,71 @@ def expire_claim(key: str) -> None:
     )
 
 
+def reviewer_rpc(key: str, decision: str) -> None:
+    if decision not in {"hold", "reject"}:
+        raise ValueError("invalid_test_review_decision")
+    review = sql_scalar(
+        "select review.id::text || '|' || review.candidate_hash "
+        "from public.source_version_updates as update_item "
+        "join public.review_items as review on review.id=update_item.review_item_id "
+        "join public.source_item_versions as version "
+        "on version.id=update_item.source_item_version_id "
+        "join public.source_items as item on item.id=version.source_item_id "
+        "join public.sources as source on source.id=item.source_id "
+        f"where source.source_key='{key}'"
+    )
+    review_id, candidate_hash = review.split("|")
+    keys = local_keys()
+    http = BoundedHttpTransport(allowed_origins={LOCAL_API}, min_interval=0, max_requests=8)
+    email = f"local-hold-reviewer-{uuid4().hex[:12]}@example.invalid"
+    password = secrets.token_urlsafe(24)
+    created = _post_json(
+        http,
+        LOCAL_API + "/auth/v1/admin/users",
+        {"email": email, "password": password, "email_confirm": True},
+        apikey=keys["service"],
+        bearer=keys["service"],
+    )
+    sql_scalar(
+        "insert into public.admin_users(user_id,role,enabled) values "
+        f"('{created['id']}','reviewer',true) returning user_id"
+    )
+    session = _post_json(
+        http,
+        LOCAL_API + "/auth/v1/token?grant_type=password",
+        {"email": email, "password": password},
+        apikey=keys["anon"],
+        bearer=keys["anon"],
+    )
+    _post_json(
+        http,
+        LOCAL_API
+        + (
+            "/rest/v1/rpc/hold_for_evidence"
+            if decision == "hold"
+            else "/rest/v1/rpc/reject_review_item"
+        ),
+        {
+            "p_review_item_id": review_id,
+            "p_expected_candidate_hash": candidate_hash,
+            "p_decision_note": "Synthetic reviewer decision for recovery test",
+        },
+        apikey=keys["anon"],
+        bearer=session["access_token"],
+    )
+
+
 def main() -> int:
     with protocol_server(existing_update=True) as (origin, calls):
         for fault, pre_review, post_review in (
             ("after_submit", None, "reject"),
+            ("after_submit", "reject", None),
             ("after_policy", "approve", None),
             ("after_policy", "reject", None),
             ("lost_submit_response", None, "reject"),
         ):
             key = f"local-crash-{uuid4().hex[:10]}"
+            early_reject = fault == "after_submit" and pre_review == "reject"
             first = child(key, origin, fault)
             before = snapshot(key)
             original_ids = receipt_ids(key)
@@ -216,6 +274,7 @@ def main() -> int:
                 ):
                     raise AssertionError("human_decision_changed_receipt")
             model_calls_before = calls["model"]
+            reviewed_status = receipt_ids(key)[5]
             resumed = child(key, origin, "none")
             after = snapshot(key)
             recovered_ids = receipt_ids(key)
@@ -225,8 +284,9 @@ def main() -> int:
                 after[0] != before[0]
                 or after[1] != "processed"
                 or after[4] == "<empty>"
-                or after[5:] != ("1", "1", "1", "1")
+                or after[5:] != ("1", "1", "1", "0" if early_reject else "1")
                 or recovered_ids[:4] != original_ids[:4]
+                or recovered_ids[5] != reviewed_status
                 or calls["model"] != model_calls_before
             ):
                 raise AssertionError(f"committed_receipt_recovery_side_effects:{fault}:{after}")
@@ -242,7 +302,7 @@ def main() -> int:
             ):
                 raise AssertionError("committed_receipt_repeat_changed_database")
             competing_key = None
-            if fault == "after_submit":
+            if fault == "after_submit" and pre_review is None:
                 competing_key = f"local-conflict-{uuid4().hex[:10]}"
                 competing = child(competing_key, origin, "none")
                 conflict_state = snapshot(competing_key)
@@ -267,7 +327,111 @@ def main() -> int:
                 ):
                     raise AssertionError("other_source_conflict_did_not_resume")
                 review_pending_update("reject")
-            print(f"GREEN {fault}: one receipt, one Policy, processed once")
+            print(
+                f"GREEN {fault}/{pre_review or 'unreviewed'}: "
+                f"one receipt, {0 if early_reject else 1} Policy, processed once"
+            )
+        held_key = f"local-held-crash-{uuid4().hex[:10]}"
+        child(held_key, origin, "after_submit")
+        held_original = receipt_ids(held_key)
+        expire_claim(held_key)
+        reviewer_rpc(held_key, "hold")
+        if (
+            receipt_ids(held_key)[:5] != held_original[:5]
+            or receipt_ids(held_key)[5] != "needs_evidence"
+        ):
+            raise AssertionError("human_hold_changed_receipt")
+        held_model_calls = calls["model"]
+        resumed_hold = child(held_key, origin, "none")
+        held_final = snapshot(held_key)
+        held_ids = receipt_ids(held_key)
+        if (
+            resumed_hold is None
+            or resumed_hold["outcome"] != "success"
+            or held_final[1] != "processed"
+            or held_final[4] == "<empty>"
+            or held_final[5:] != ("1", "1", "1", "1")
+            or held_ids[:4] != held_original[:4]
+            or held_ids[5] != "needs_evidence"
+            or calls["model"] != held_model_calls
+        ):
+            raise AssertionError(f"held_update_policy_did_not_resume:{resumed_hold}:{held_final}")
+        review_pending_update("approve")
+        approved_ids = receipt_ids(held_key)
+        if approved_ids[:5] != held_ids[:5] or approved_ids[5] != "approved":
+            raise AssertionError("held_human_approval_changed_receipt")
+        repeated_hold = child(held_key, origin, "none")
+        if (
+            repeated_hold is None
+            or repeated_hold["outcome"] != "success"
+            or snapshot(held_key) != held_final
+            or receipt_ids(held_key) != approved_ids
+            or calls["model"] != held_model_calls
+        ):
+            raise AssertionError("held_approved_update_repeat_changed_database")
+        print("GREEN held update: delayed Policy, human approval, same receipt")
+        legacy_key = f"local-legacy-held-{uuid4().hex[:10]}"
+        child(legacy_key, origin, "after_submit")
+        legacy_original = receipt_ids(legacy_key)
+        expire_claim(legacy_key)
+        reviewer_rpc(legacy_key, "hold")
+        sql_scalar(
+            "update public.scam_patterns set row_version=row_version+1 "
+            "where id=(select update_item.pattern_id "
+            "from public.source_version_updates as update_item "
+            "join public.source_item_versions as version "
+            "on version.id=update_item.source_item_version_id "
+            "join public.source_items as item on item.id=version.source_item_id "
+            "join public.sources as source on source.id=item.source_id "
+            f"where source.source_key='{legacy_key}') returning row_version"
+        )
+        legacy_model_calls = calls["model"]
+        for _ in range(2):
+            held = child(legacy_key, origin, "none")
+            state = snapshot(legacy_key)
+            if (
+                held is None
+                or held["outcome"] != "degraded"
+                or held["counts"].get("evidence_review_deferred") != 1
+                or held["counts"].get("analysis_failures", 0) != 0
+                or state[1:5] != ("pending_ai", "1", "awaiting_evidence_review", "<empty>")
+                or state[5:] != ("1", "1", "1", "0")
+                or receipt_ids(legacy_key)[5] != "needs_evidence"
+                or calls["model"] != legacy_model_calls
+            ):
+                raise AssertionError(f"legacy_held_update_retry_was_consumed:{held}:{state}")
+        reviewer_rpc(legacy_key, "reject")
+        if receipt_ids(legacy_key)[5] != "rejected":
+            raise AssertionError("legacy_held_human_rejection_missing")
+        resumed_legacy = child(legacy_key, origin, "none")
+        legacy_final = snapshot(legacy_key)
+        if (
+            resumed_legacy is None
+            or resumed_legacy["outcome"] != "success"
+            or legacy_final[1] != "processed"
+            or legacy_final[4] == "<empty>"
+            or legacy_final[5:] != ("1", "1", "1", "0")
+            or receipt_ids(legacy_key)[:5] != legacy_original[:5]
+            or receipt_ids(legacy_key)[5] != "rejected"
+            or calls["model"] != legacy_model_calls
+        ):
+            raise AssertionError(
+                f"legacy_held_rejection_did_not_resume:{resumed_legacy}:{legacy_final}"
+            )
+        restored_lifecycle = sql_scalar(
+            "select pattern.lifecycle_status from public.source_version_updates as update_item "
+            "join public.source_item_versions as version "
+            "on version.id=update_item.source_item_version_id "
+            "join public.source_items as item on item.id=version.source_item_id "
+            "join public.sources as source on source.id=item.source_id "
+            "join public.scam_patterns as pattern on pattern.id=update_item.pattern_id "
+            f"where source.source_key='{legacy_key}'"
+        )
+        if restored_lifecycle != "review_ready":
+            raise AssertionError(f"held_rejection_hid_approved_pattern:{restored_lifecycle}")
+        print(
+            "GREEN legacy held update deferred without retry loss, then rejection restored pattern"
+        )
         repeated_key = f"local-repeat-crash-{uuid4().hex[:10]}"
         original_ids: tuple[str, ...] | None = None
         for attempt in range(3):

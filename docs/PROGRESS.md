@@ -1,5 +1,37 @@
 # V0.1 offline launch readiness
 
+## 2026-09-29 P1 再开工：审核先于恢复的时序
+
+1. 独立红灯 `work/leader29-early-reject.log`：证据已提交、Policy 0、浏览器先拒绝后，四次重启均 `existing_recovery_read_failed`，游标空；保留 `AGENTS.md`、`docs/BLOCKED.md`、`docs/PROGRESS.md`、`web/next-env.d.ts` 等原有未提交差异。
+2. 状态规则：无 Policy 且审核 pending/in_review、草稿有效 → 依据持久候选补录 shadow Policy；无 Policy 且 needs_evidence → 暂缓并归还认领，不消耗重试；无 Policy 且有可核验人工 rejected 终态 → 不伪造已不允许写入的 Policy，完成来源处理并推进游标。已有 Policy 的合法审核终态照原决策收尾；其他状态拒绝恢复。
+3. 待验证：拒绝终态须核对审核事件、草稿/证据终态及旧批准版不变；暂缓后人工拒绝可恢复，重复运行无重复记录。先把独立红灯加入仓库回归，再做前向迁移、worker 修复与新库全套验收。
+- 仓库回归在独立复核旧栈先得到目标红灯 `work/leader29-repository-early-reject-red.log`。前向迁移 013 在这套可丢弃旧红栈应用后，早拒绝场景已恢复；探针随后因测试仍错误地预期“早拒绝后存在待审冲突”失败，已修正该测试条件并通过真实浏览器清理探针留下的合成草稿。证据 `work/leader29-early-reject-probe.log`、`leader29-probe-cleanup.log`；完整回归与全新 21 迁移库仍待跑。
+- 第一套全新 21 迁移库的早拒绝与暂缓后拒绝恢复已通过，但完整回归末尾发现旧 `hold_for_evidence` 把已批准模式 lifecycle 留在 `evidence_pending`，暂缓后拒绝未恢复 `review_ready`，后续来源无法匹配而落入新模式路径；红证据 `work/leader29-reviewed-regression-fresh.log` 及该库只读状态查询。前向迁移 013 现补充暂缓时保持既有模式 row_version、拒绝时恢复 review_ready，并在回归中显式断言状态；更新后的迁移须另建全新库从零验证。
+- 第二套全新 21 迁移库 `scam-radar-reviewed-final` 从零建库后，`make database-test` 退出 0；仓库真实进程/浏览器回归退出 0。早拒绝在 Policy 0 时完成且保留人工决定；新暂缓状态可补 shadow Policy 后由浏览器批准；模拟旧暂缓状态两轮归还认领不耗重试，人工拒绝后完成并恢复旧批准模式 `review_ready`；三次中断、丢响应及原有审核边界仍通过。证据 `work/leader29-final-stack-start.log`、`leader29-final-database-test.log`、`leader29-final-reviewed-regression.log`。下一步把新增 SQL 反向断言补全并跑最终串行套件。
+- 新增 SQL 反向断言：未暂缓时不能调用归还认领 RPC；伪造 reviewer 身份直接改成 rejected、却无 append-only 人工事件时，恢复 RPC 必须拒绝；匿名/审核员无恢复或归还权限。单独在上述新库运行 rollback 型 existing-pattern 契约退出 0，证据 `work/leader29-existing-contract-negative.log`。尝试在已被根验收写入数据的同一库重跑整个 `make database-test` 因旧契约的可变基线报 `policy_decision_input_stale`，并非最终状态；最终根套件须换新库一次性执行。
+- 修正静态契约漏列新恢复/暂缓 RPC 并重生数据库类型后，最终源码状态的 `make check/test/eval/demo/collect-dry-run` 依次退出 0：119 Python、32 前端单元、9 浏览器、100 recorded、100 静态文件，0 跳过；15 来源仍 disabled、`launch_qualified=false`。`make test` 首次沙箱内 localhost bind 被拒且静态 RPC 清单过期，已分别用获准本地 socket 权限和补全权限断言解决；绿证据 `work/leader29-final21-{check,test,eval,demo,collect}.log`。后续须用最终迁移文本从零建库，跑 database/joined/deployment/recovery。
+- 最终迁移文本的独立 `scam-radar-reviewed-accept-db` 栈从零应用 21 迁移，`make database-test` 与 `make recovery-rehearsal` 各退出 0：SQL 越权/伪造审核反向测试、本地新骗局持久化、26 表恢复/权限/同一 release、密文回读/篡改拒绝通过；外部上传 false。证据 `work/leader29-accept-db-start.log`、`leader29-accept-database-test.log`、`leader29-accept-recovery.log` 及 `work/launch-readiness/recovery-87745a7474fc/report.json`、`backup-e2e-c97ec4ef1fdc/report.json`。仍待独立 joined、deployment 栈。
+- 独立 `scam-radar-reviewed-accept-joined` 栈从零应用同一 21 迁移，`make joined-local-e2e` 退出 0：新骗局、已有骗局追加证据、Policy 前后进程退出、早拒绝、暂缓后批准、旧暂缓后拒绝、连续三次中断、待审冲突、不可变 release 与 360/390/768/1440 浏览器均通过。证据 `work/leader29-accept-joined-start.log`、`leader29-accept-joined.log`；还差独立发布/回退栈及最终报告。
+- 独立 `scam-radar-reviewed-accept-deploy` 栈从零应用同一 21 迁移，`make deployment-local-e2e` 退出 0：本地 Pages 协议上传未登记对账、旧版拒绝、失败后原产物回退及 smoke 撤回通过。证据 `work/leader29-accept-deploy-start.log`、`leader29-accept-deploy.log`。九个根命令现已针对同一最终代码/迁移状态退出 0；待同步报告、阻塞状态与提交核查。
+- 在保留的最终 joined 新栈上，直接运行独立复核留下的**未修改** `work/leader29-early-reject.py`，退出 0：同一真实进程退出→浏览器人工先拒绝→四次重启时，第一次即 processed/游标推进，后续三次证据/修订/审核 ID、Policy 0、attempt 2 均不变。原红 `work/leader29-early-reject.log` 对应新绿 `work/leader29-independent-repro-green.log`。这是针对用户指出的精确反例的独立脚本复跑。
+
+## 2026-09-29 leader 第二次独立验收 — 未通过
+
+- 核对提交 `f9649db`，保护原有未提交文件；本次没有修改产品代码。
+- 独立复跑 `make check/test/eval/demo/collect-dry-run` 全部退出 0：
+  Python 119、前端单元 32、浏览器 9、recorded 100、静态文件 100；
+  15 来源仍关闭、`launch_qualified=false`。日志 `work/leader29-*.log`。
+- 新建 `scam-radar-audit29-db`，20 个迁移从零应用；`make database-test`
+  退出 0，随后独立执行仓库 `local_existing_crash_e2e.py` 退出 0，原四种
+  中断/响应丢失场景、三次连续中断及跨来源冲突均通过。
+- 额外时序抽查失败：after_submit 退出后、Policy 尚无记录时，浏览器人工
+  拒绝成功；之后四次重启均 `existing_recovery_read_failed`，attempt 2→5，
+  版本 error、游标空、Policy 0；原收据及人类拒绝未变。新迁移把这一合法
+  终态当成非法恢复状态；P1 重新打开，详见 `docs/BLOCKED.md` 最新段。
+- 证据 `work/leader29-early-reject.log`；未在发现阻塞后继续复跑完整 joined、
+  deployment 和 recovery 根目标，不以执行方旧日志代替本次独立通过结论。
+  外部采集/模型/生产/上传/发布/DNS 均未激活，本次未提交或推送。
+
 ## 2026-09-29 最终联合与发布验收
 
 - 全新 20 迁移隔离栈 `scam-radar-crash-final-joined` 上，`make joined-local-e2e` 退出 0：新骗局、已有骗局追加证据、四个真实中断/丢响应点、连续三次中断、待审冲突、浏览器批准/拒绝、不可变 release、360/390/768/1440 宽度均通过。证据 `work/crash-recovery-20260928/final20-joined-local-e2e.log`。
