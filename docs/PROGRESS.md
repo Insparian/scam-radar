@@ -1,5 +1,10 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 Worker 部署账户保护补强
+
+- 发现两个 Worker 的 Wrangler 配置原先没有固定账户 ID；若直接执行 Wrangler，可能误选承载其他项目的现有 Cloudflare 账户。现已在两个配置加入全零占位 ID，待专用账户单独获批并审核后才可一起替换为 `config/cloudflare-account.json` 的 ID；新增本地一致性测试。
+- 本机缓存的 Wrangler 4.130.0 对两个 Worker `deploy --dry-run` 均通过。`make check` 与 `make test` 通过：154 Python、9 Node、9 浏览器；首次受限沙盒重跑时本机端口权限不足，获准本机端口后全绿。没有部署、访问控制台或改云端资源。
+
 ## 2026-10-07 两条离线工作合并验收
 
 - 将 Supabase 生产迁移前检查与 Decision 015 的独立 Cloudflare Free 账户/KV 备份代码合到本地 `codex/supabase-preflight` 分支；没有推送、部署或改云端资源。解决 `docs/PROGRESS.md`、`docs/data-flow.md` 两处文档冲突，保留两个数据流 F11/F12。

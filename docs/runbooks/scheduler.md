@@ -14,7 +14,7 @@ Decision [015](../../DECISIONS/015-isolated-cloudflare-free-account.md) addition
 
 ## Activation values and data flow
 
-All cloud steps below need separate final activation approval. First verify the Cloudflare account is on **Workers Free**, the Cron limit is available, and no paid Workers plan is being selected. Deploy only this Worker from the reviewed commit; `wrangler.toml` starts it inert and disables Wrangler usage telemetry. Note that `wrangler secret put` creates a new Worker deployment immediately, so treat each secret change as an activation action.
+All cloud steps below need separate final activation approval. First verify the Cloudflare account is on **Workers Free**, the Cron limit is available, and no paid Workers plan is being selected. Deploy only this Worker from the reviewed commit after its `wrangler.toml` account ID matches the dedicated ID in `config/cloudflare-account.json`; the committed all-zero ID blocks direct Wrangler writes beforehand. The Worker starts inert and disables Wrangler usage telemetry. Note that `wrangler secret put` creates a new Worker deployment immediately, so treat each secret change as an activation action.
 
 | Location | Value | Purpose |
 | --- | --- | --- |
