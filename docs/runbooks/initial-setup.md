@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Get a fresh checkout to a verified offline fixture state. This runbook does **not** activate collection, a live model, production Supabase, Cloudflare, or DNS.
+Get a fresh checkout to a verified offline fixture state. This runbook does **not** activate collection, a live model, production Supabase, Cloudflare, or DNS. Decision 015 requires a [dedicated Cloudflare Free account](dedicated-cloudflare-account.md); its ID is deliberately unset in `config/cloudflare-account.json`, so all Cloudflare write workflows stop until the account is separately approved and reviewed.
 
 ## Offline setup — allowed now
 
@@ -42,7 +42,7 @@ keep its activation switches off until Rui approves that live path.
 | Production database foundation — `supabase-production` environment | None | `SUPABASE_DB_URL`, `SUPABASE_REVIEWER_EMAIL` |
 | Protected reviewer — `cloudflare-preview` environment | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `REVIEWER_ACCESS_READY` after Access verification | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
 | One-source collection — repository level | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_APPROVED_SOURCE_KEY` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `SCAM_RADAR_MODEL_API_KEY` |
-| Encrypted backup — `production-backup` environment | `SCAM_RADAR_AGE_RECIPIENT`, `SCAM_RADAR_BACKUP_PGHOST`, `SCAM_RADAR_BACKUP_PGUSER`, `SCAM_RADAR_R2_ACCOUNT_ID`, `SCAM_RADAR_R2_BUCKET` | `SCAM_RADAR_BACKUP_PGPASSWORD`, `SCAM_RADAR_SUPABASE_CA_PEM`, `SCAM_RADAR_R2_ACCESS_KEY_ID`, `SCAM_RADAR_R2_SECRET_ACCESS_KEY` |
+| Encrypted backup — `production-backup` environment | `SCAM_RADAR_AGE_RECIPIENT`, `SCAM_RADAR_BACKUP_PGHOST`, `SCAM_RADAR_BACKUP_PGUSER`, `SCAM_RADAR_KV_ACCOUNT_ID`, `SCAM_RADAR_KV_NAMESPACE_ID` | `SCAM_RADAR_BACKUP_PGPASSWORD`, `SCAM_RADAR_SUPABASE_CA_PEM`, `SCAM_RADAR_KV_TOKEN` |
 | Immutable public release — `production` environment | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_PAGES_PROJECT`, `SCAM_RADAR_PAGES_PRODUCTION_BRANCH` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_TOKEN` |
 
 The local model evaluation uses `SCAM_RADAR_EVAL_API_KEY` in `.env`; it is not a
@@ -52,7 +52,7 @@ different key. Leave every `SCAM_RADAR_*_ENABLED`,
 `SCAM_RADAR_LIVE_ACTIVATION_APPROVED`, and `SCAM_RADAR_LIVE_EVAL_APPROVED` variable
 unset or `false` until the corresponding activation is approved. The backup and
 deployment workflows also require their own exact confirmation values after
-approval. Do not fill an unavailable R2 bucket or publishable key with an invented
+approval. Do not fill an unapproved KV namespace or publishable key with an invented
 value.
 
 ## Real local database contract — optional
@@ -98,13 +98,13 @@ Before complete live-system activation, also show Rui:
 - reviewer email and collection contact email;
 - the selected Beijing Qwen model and database call/item/character caps;
 - required GitHub secrets/variables;
-- Cloudflare's account-level Pages token scope; and
-- R2's encrypted-backup data path, recovery-key custody, retention, and restore test; and
+- the dedicated Cloudflare Free account and account-level Pages/KV token scope; and
+- KV's encrypted-backup data path, recovery-key custody, retention, and restore test; and
 - confirmation that collection, AI, deploy, and live policy authorization switches start `false`.
 
 Only after approval:
 
-1. Reuse the verified Supabase and Pages projects. The existing Frankfurt Supabase project was restored with Rui's separate authorization on 2026-10-07 and showed Healthy. Create or enable other resources only when their exact activation is approved. R2 currently requires a subscription that may incur charges; Rui permits only genuinely free Cloudflare services, so do not open R2 on the assumption that free monthly usage prevents billing.
+1. Reuse the verified Supabase project. The existing Frankfurt Supabase project was restored with Rui's separate authorization on 2026-10-07 and showed Healthy. Existing Pages previews are in a shared Cloudflare account; do not deploy there again. Create a dedicated Free account and new Pages projects only after separate approval, following [account isolation](dedicated-cloudflare-account.md). R2 requires a subscription that may incur charges and is not selected; the proposed KV backup remains off until its [retention and recovery gates](kv-backup.md) pass.
 2. Store secrets in GitHub Encrypted Secrets, never repository files or workflow scope.
 3. Create the first reviewer in Supabase Auth through the Dashboard so the reviewer
    sets their own password; do not add an SMTP service merely for this bootstrap.

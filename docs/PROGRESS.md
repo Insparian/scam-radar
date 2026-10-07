@@ -1,21 +1,35 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 两条离线工作合并验收
+
+- 将 Supabase 生产迁移前检查与 Decision 015 的独立 Cloudflare Free 账户/KV 备份代码合到本地 `codex/supabase-preflight` 分支；没有推送、部署或改云端资源。解决 `docs/PROGRESS.md`、`docs/data-flow.md` 两处文档冲突，保留两个数据流 F11/F12。
+- 合并后 `make check/test/eval/demo/collect-dry-run` 全部退出 0：153 Python、9 个 Node 调度器、9 个浏览器、100 recorded、100 个静态文件；15 个来源仍关闭，`launch_qualified=false`。结果只证明离线合成流程。
+- 尝试按既有只读授权继续核查 Cloudflare 创建入口时，电脑处于锁屏且自动解锁失败，浏览器不可用；未访问控制台或操作账户。待 Rui 解锁后可续查资格；创建新账户仍需单独批准。
+
+## 2026-10-07 Decision 015 离线推进
+
+- Rui 对独立 Cloudflare Free 账户方案回复 `proceed`。已记录 `DECISIONS/015`；未创建账户、迁移 Pages、部署 Worker、上传备份或改 DNS。
+- 新增版本化专用账户 ID 检查。ID 尚未审核填写，因此现有 Cloudflare Pages 工作流和未来 KV 上传均拒绝写入；保护共享账户其他项目。新建独立备份 Cron Worker 离线代码，移除备份工作流 GitHub schedule，改由默认关闭的 Worker dispatch。现有采集 Cron 仍默认关闭。
+- 新增 Cloudflare KV 密文分块上传/读回验证适配器：每块 16 MiB，整份上限 64 MiB，先验本地 SHA-256，写后回读，manifest 最后写；不自动删除。旧 R2 本地恢复测试保留，真实工作流改指 KV。新增本地协议与账户隔离测试。
+- 本地 `make check`、`make test`、`make eval`、`make demo`、`make collect-dry-run` 通过：148 Python、9 个调度器 Node、9 个浏览器、100 recorded、100 个静态文件；15 来源仍关闭，`launch_qualified=false`。固定 Wrangler 4.130.0 对备份 Worker `deploy --dry-run` 成功，1.46 KiB、无绑定、无部署。首次离线 npx 缓存入口缺包失败，随后直接调用本机已缓存的同版本 Wrangler 通过；没有使用在线安装。
+- 数据去向、停机开关及尚未满足的容量/保留/独立恢复门槛见 [KV runbook](runbooks/kv-backup.md)、[账户 runbook](runbooks/dedicated-cloudflare-account.md) 和 `docs/BLOCKED.md` 顶部。
+
 ## 2026-10-07 生产迁移前检查补强
 
-- 未提交的 Supabase 迁移前只读检查原先只覆盖主要内容表，可能漏掉独立存在的审核项、流水线运行、来源状态/结果、审核事件或租约。现已把这些运行表纳入“空业务数据”判定；非空库在任何 `db push` 前停止。
+- Supabase 迁移前只读检查原先只覆盖主要内容表，可能漏掉独立存在的审核项、流水线运行、来源状态/结果、审核事件或租约。现已把这些运行表纳入“空业务数据”判定；非空库在任何 `db push` 前停止。
 - 用现有合成本地 PostgreSQL 实际执行相同 SQL：返回 16 个已应用版本、`application_data_empty=false`，无 SQL 错误；只输出计数和布尔值，未连接生产库。此检查的 Supabase→受保护 GitHub runner 汇总数据流仍未启用，需单独激活批准。
 - `make check`、`make test` 通过（146 Python、6 个采集调度器测试、9 个浏览器测试）；静态产物秘密扫描通过。没有运行生产迁移或外部请求。
 
-## 2026-10-07 Cloudflare 账户隔离待决策
+## 2026-10-07 Cloudflare 账户隔离调研（历史）
 
-- Rui 指出当前 Cloudflare 账户中有其他项目 Workers，要求明确各账户职责并避免影响其运行。只读控制台证据显示现有共享账户确有其他项目 Workers 与两个 KV 命名空间；未查看这些命名空间的内容或修改资源。[官方账户说明](https://developers.cloudflare.com/fundamentals/account/create-account/)允许符合资格的现有用户在同一登录下创建额外 Free 账户；[KV 限额](https://developers.cloudflare.com/kv/platform/limits/)和[Workers 限额](https://developers.cloudflare.com/workers/platform/limits/)按账户共享，[KV API 权限](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)属账户级。Rui 随后对独立 Free 账户的 Decision 015 回复 `proceed`；离线实现已在本地 `codex/isolated-cloudflare-backup` 分支提交，尚未推送。未建账户、迁移 Pages、部署 Worker 或写 KV。
+- Rui 指出当前 Cloudflare 账户中有其他项目 Workers，要求明确各账户职责并避免影响其运行。只读控制台证据显示现有共享账户确有其他项目 Workers 与两个 KV 命名空间；未查看这些命名空间的内容或修改资源。[官方账户说明](https://developers.cloudflare.com/fundamentals/account/create-account/)允许符合资格的现有用户在同一登录下创建额外 Free 账户；[KV 限额](https://developers.cloudflare.com/kv/platform/limits/)和[Workers 限额](https://developers.cloudflare.com/workers/platform/limits/)按账户共享，[KV API 权限](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)属账户级。Rui 随后对独立 Free 账户的 Decision 015 回复 `proceed`；离线实现已本地提交，未推送。未建账户、迁移 Pages、部署 Worker 或写 KV。
 - 同一登录下的 Cloudflare 账户切换菜单已只读显示 `Create Account` 入口；现有账户的当前成员权限详情显示 `Super Administrator - All Privileges`。这满足官方“现有账户 Super Administrator”条件，但未核查登录账户的七天年龄或最终创建页，因此不能宣称创建资格全部验证。未点击创建入口、提交表单或变更权限。
 
 ## 2026-10-07 本地填写项复核
 
 - 只读解析忽略的 `.env`，仅输出字段是否非空/关闭，不显示值：百炼评测与 worker key、Supabase 项目 URL、公开 Supabase URL、Cloudflare account ID 已填；六个真实激活开关均为 `false`。生产 service key、数据库 URL、reviewer 邮箱、公开 publishable key、Cloudflare API/Pages token 仍空。R2 已排除在当前免费方案外，不要求填写其 bucket/访问 key。`.env` 不会自动同步到 GitHub Secrets/Variables 或 Cloudflare Worker secrets；这些位置仍须在各自激活关卡配置。未试用任何凭据或连接云端。
 
-## 2026-10-07 免费备份替代方案调研
+## 2026-10-07 免费备份替代方案调研（历史）
 
 - [Cloudflare Workers KV Free 价格](https://developers.cloudflare.com/kv/platform/pricing/)与[限额](https://developers.cloudflare.com/kv/platform/limits/)显示：免费方案含 1 GB 存储、每天 1,000 次写入，超额操作失败；单值最多 25 MiB。[KV 一致性说明](https://developers.cloudflare.com/kv/concepts/how-kv-works/)显示跨地点读取最终一致，不能用覆盖同一 key 的方式提交备份。适合研究“`age` 密文分块、不可变对象名、最后提交清单、异地回读校验”的纯免费候选，仍需真实容量/恢复验证和 Rui 的架构决策；未创建服务或发送数据。
 - 现有 `.github/workflows/backup.yml` 仍有 GitHub 定时触发；公开仓库 60 天无活动自动停用的风险也适用于它。即使更换 R2 存储，仍须另设计可靠调度与缺席告警。`D1` 免费方案有 5 GB 账户存储、单行 2 MB 上限，但为数据库存储而非备份对象接口；暂不作为首选。未改工作流。

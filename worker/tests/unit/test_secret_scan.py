@@ -19,6 +19,12 @@ def test_static_export_rejects_private_variable_names() -> None:
     assert content_findings("SUPABASE_SECRET_KEY", export=True) == [
         "private variable name SUPABASE_SECRET_KEY"
     ]
+    assert content_findings("SCAM_RADAR_KV_TOKEN", export=True) == [
+        "private variable name SCAM_RADAR_KV_TOKEN"
+    ]
+    assert content_findings("GITHUB_ACTIONS_TOKEN", export=True) == [
+        "private variable name GITHUB_ACTIONS_TOKEN"
+    ]
 
 
 def test_public_boundary_blocks_private_and_generated_files() -> None:
