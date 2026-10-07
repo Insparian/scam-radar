@@ -1,5 +1,9 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 KV 免费容量保守测算
+
+- 对照 Cloudflare 官方 Free 1 GB 存储/超额失败规则，用十进制 10 亿字节做保守预算：14 份各 64 MiB 的上限备份占 939,524,096 字节，剩余 60,475,904 字节，不够再暂存第 15 份。12 份上限备份占 805,306,368 字节，剩余 194,693,632 字节，仍未计 manifest 和残留分块。这只说明保留策略必要，不代表选择了自动删除天数；真实密文体积/独立恢复未测。
+
 ## 2026-10-07 远端离线 CI 复核
 
 - 已将 `codex/supabase-preflight` 开为 [draft PR #10](https://github.com/Insparian/scam-radar/pull/10)，用 PR 触发仓库的离线 CI；单独推送此分支不会触发该工作流。
