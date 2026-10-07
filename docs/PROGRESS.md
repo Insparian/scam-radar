@@ -1,5 +1,11 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 Pages 空项目创建入口只读核对
+
+- 在专用 `Scam Radar` Cloudflare 账户（ID 与版本化配置一致）查看 Workers & Pages：显示 `No projects found`。Direct Upload 界面允许先填项目名、单独点击 `Create project`，上传资产是下一步；因此可以只建空项目。拟用公开项目名 `insparian-scam-radar-public` 和审核项目名 `insparian-scam-radar-private-reviewer` 均经表单可用性检查，界面分别预告同名 `.pages.dev` 域名。未点击创建、未上传、未部署，也未进入旧共享账户。
+- [Cloudflare Direct Upload 官方说明](https://developers.cloudflare.com/pages/get-started/direct-upload/#production-branch-configuration)：创建页不提供生产分支设置；改变 Direct Upload 项目的生产分支须用 Update Project API。审核站要求 `production-disabled`，因此不能仅靠当前浏览器创建页保证这个安全设置。现有 `reviewer-control-plane.yml` 的获批空项目创建路径已明确提交此值；它还需专用账户的细粒度 API token、主分支代码及单独激活。
+- 已就两个空 Pages 项目向 Rui 提出精确创建授权；答复前保持表单，不提交。正式创建后仍须从 Cloudflare 返回结果核对真实子域名，再填 `cloudflare-preview` 环境变量；可用性预告不等于项目已存在。
+
 ## 2026-10-07 专用 Pages 目标工作流准备
 
 - 公开 fixture 预览和审核站工作流原来写死共享 Cloudflare 账户的项目名与 `pages.dev` URL，换专用账户令牌会指错目标。现改用 `cloudflare-preview` 环境中独立的项目名/实际分支别名变量；值缺失、格式错误、URL 子域名前缀与项目名不符或使用旧共享账户 URL 时，在上传前拒绝。账户 ID 保护和审核站 Access 关卡保留。

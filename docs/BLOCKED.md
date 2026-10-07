@@ -5,7 +5,7 @@
 - 两组离线改动、Worker 账户保护及新账户 ID 配置已在 `codex/supabase-preflight` 验证；完整离线套件通过。提交/推送状态见 `docs/PROGRESS.md` 当日条目。
 - Rui 回复 `proceed` 后，已在同一登录下创建专用 `Scam Radar` Cloudflare 账户，账户 ID 已写入版本化配置。Billing 显示 `Workers Free` Active，未绑定付款方式；现有共享账户其他 Workers/KV 未改。现有预览仍在共享账户，尚未迁移或检查线上站点。
 - 新 KV 备份协议只在本地合成数据验证；真实路径将是 Supabase → 受保护的 GitHub runner → 加密 → 独立账户 Workers KV。备份 Worker 只负责唤醒 GitHub，不持有数据库或 KV 密钥。没有创建 Worker/KV、读生产数据或上传。
-- **上线仍阻塞：** 需另行批准创建 Pages、Worker、KV 等资源与预览迁移。KV 创建表单已备好空命名空间名 `scam-radar-encrypted-backups`；EU 持久存储与 Standard 全球存储的选项和创建授权正在等 Rui 答复，未提交。预览工作流已改为读取专用账户的 Pages 项目名和实际分支 URL，仍须在获批创建后核对并填入受保护环境，不能直接沿用旧账户令牌/URL。实测真实密文体积不超过 64 MiB、确定不超过 1 GB 的保留/删除策略、恢复密钥保管、独立数据库完整恢复及备份缺席/容量告警。当前没有自动删除，长期每日备份会耗尽容量。既有共享账户的 Secrets 不能沿用。
+- **上线仍阻塞：** 需另行批准创建 Pages、Worker、KV 等资源与预览迁移。KV 创建表单已备好空命名空间名 `scam-radar-encrypted-backups`；EU 持久存储与 Standard 全球存储的选项和创建授权正在等 Rui 答复，未提交。Pages 空项目入口已只读确认，拟用公开/审核项目名均显示可用，两个空项目的创建授权仍待答复，均未提交；审核项目须通过已写好的 API 创建路径设 `production-disabled`，UI 创建页不能保证该值，专用账户 API token 尚未填。预览工作流已改为读取专用账户的 Pages 项目名和实际分支 URL，仍须在获批创建后核对并填入受保护环境，不能直接沿用旧账户令牌/URL。实测真实密文体积不超过 64 MiB、确定不超过 1 GB 的保留/删除策略、恢复密钥保管、独立数据库完整恢复及备份缺席/容量告警。当前没有自动删除，长期每日备份会耗尽容量。既有共享账户的 Secrets 不能沿用。
 - 容量保守上界：14 份各 64 MiB 的备份已占 939,524,096 字节，若按 1 GB=10 亿字节，剩余不足再写一份上限备份；还未计未提交的分块。不能把“每天备份”视为可持续，真实体积测量和获批的保留/删除规则仍是独立上线门槛。
 - 真实来源、模型、生产迁移、发布、DNS、大陆访问与 7 天稳定性关卡仍开放。下文 R2 是历史候选，现行计划见 [KV 备份](runbooks/kv-backup.md) 与 [账户分工](runbooks/dedicated-cloudflare-account.md)。
 
