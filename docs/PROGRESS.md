@@ -1,5 +1,10 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 本地 Cloudflare 账户目标修正
+
+- 只读状态检查发现忽略的 `.env` 中 `CLOUDFLARE_ACCOUNT_ID` 仍指向旧共享账户，而 `SCAM_RADAR_KV_ACCOUNT_ID` 未填。已将这两个非密钥字段改为版本化专用账户 ID；不显示或修改任何密钥。KV namespace ID 仍空，六个激活开关仍关闭。
+- `scripts/check_env.py` 通过；未发送请求、创建资源或改动共享账户。用户尚需对 KV 空命名空间的 EU/Standard 位置和创建作出选择。
+
 ## 2026-10-07 新账户 KV 创建前只读核对
 
 - 已登录的专用 `Scam Radar` Cloudflare 账户仍显示 Workers Free、无付款方式；Workers KV 命名空间列表为空。只打开创建表单，填写拟用名 `scam-radar-encrypted-backups`，选中 EU Jurisdiction，未点击 Create。
