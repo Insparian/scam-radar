@@ -1,5 +1,16 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 云端只读核查与提交
+
+- Rui 授权只读查看已登录的 Supabase、Cloudflare 控制台；未恢复项目、开通服务、读取密钥、访问站点预览或修改云资源。
+- Supabase `scam-radar` 为现有 Free 项目，地区 `eu-central-1`（Frankfurt），当前 paused。暂停状态下不能核验真实迁移、角色、RLS、连接及恢复；恢复项目仍待单独授权。
+- Cloudflare 同一账户已有 `insparian-scam-radar` 和 `insparian-scam-radar-reviewer` 两个 Pages 项目，均只有旧 preview 部署、没有 production 部署；公开项目 production branch 为 `main`，没有 custom domain。账户 Domains 清单只有 `wellphases.com`、`withguan.com`；Rui 确认目标 `insparian.com` 的 DNS 由 Namecheap 管理。没有打开现有预览或生产网站。
+- R2 进入开通订阅页面，尚未启用；页面说明超过免费额度会计费，故未点击开通。真实密文备份与恢复关卡仍无法执行。
+- 忽略的 `.env` 已留北京百炼评测/worker 两个 Key 填写位，均空，所有真实调用开关为 false；本地 `.env` 不会自动配置 GitHub Actions 的 Variables/Secrets。
+- 提交 `04edac9` 已推送 `origin/main`。推送响应提示默认分支 5 项 Dependabot 漏洞（1 critical、2 high、2 moderate）；Rui 随后授权只读查看告警。四组受影响包为 Next.js、sharp、source-map-js 和两个版本段的 brace-expansion，均有补丁；已只更新现有依赖及锁文件至修复版本。Next.js 16.3.6、sharp 0.35.5、source-map-js 1.2.2、brace-expansion 1.1.21/5.0.12 均已在本地解析。
+- `make check`、`make test`（140 Python、9 浏览器）、`make demo`（100 文件静态导出）通过；第一次 `make test` 被沙箱拒绝 localhost bind，获准本地回环后同一套件通过。完整 npm 在线审计仍显示 5 个 high，均为 `eslint-config-next` 的开发工具依赖链；`npm audit --omit=dev` 对生产依赖为 0。`npm ci --offline` 重建锁文件成功，但离线审计缓存显示 0 不代表在线 5 个开发告警消失。
+- `.env.example` 原有 Gemini/旧 Supabase/R2 名称与当前运行入口不符，现已改为北京 Qwen 评测/worker 和 GitHub workflow 实际变量名，保持假值与全部激活开关关闭。静态产物秘密名扫描增加当前私密变量名。
+
 ## 2026-10-06 亲自推进上线准备
 
 - Rui 要求由当前助手亲自执行；不派子代理。先关闭暂缓期间跨来源重复建模式的 P1，再跑完整离线验收；保留开工时已有差异。

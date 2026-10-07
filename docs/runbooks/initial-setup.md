@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Get a fresh checkout to a verified offline fixture state. This runbook does **not** activate collection, Gemini, production Supabase, Cloudflare, or DNS.
+Get a fresh checkout to a verified offline fixture state. This runbook does **not** activate collection, a live model, production Supabase, Cloudflare, or DNS.
 
 ## Offline setup — allowed now
 
-1. Read root `AGENTS.md` and confirm the checkout contains no real `.env` file or secret.
+1. Read root `AGENTS.md`; confirm `.env` is ignored by Git and no tracked file contains a real secret.
 2. Install Node.js, Python, `uv`, npm, and `make` using versions pinned by the repository.
 3. Run:
 
@@ -70,10 +70,10 @@ Before creating, linking, or enabling a cloud resource, show Rui that resource's
 Before complete live-system activation, also show Rui:
 
 - exact outbound flows from `docs/data-flow.md`;
-- first five exact source URLs and their terms/robots/policy review;
+- the first exact source URL and its terms/robots/policy review;
 - Supabase region choices and data-location implications;
 - reviewer email and collection contact email;
-- Gemini and database call/item/character caps;
+- the selected Beijing Qwen model and database call/item/character caps;
 - required GitHub secrets/variables;
 - Cloudflare's account-level Pages token scope; and
 - R2's encrypted-backup data path, recovery-key custody, retention, and restore test; and
@@ -81,7 +81,7 @@ Before complete live-system activation, also show Rui:
 
 Only after approval:
 
-1. Create/link the approved GitHub, Supabase, Gemini, private R2 bucket, and Direct Upload Pages projects.
+1. Reuse the verified Supabase and Pages projects; resume the paused Supabase project only after separate approval. Create or enable other resources only when their exact activation is approved. R2 currently requires a subscription that may incur charges; do not open it on the assumption that free monthly usage prevents billing.
 2. Store secrets in GitHub Encrypted Secrets, never repository files or workflow scope.
 3. Create the first reviewer in Supabase Auth through the Dashboard so the reviewer
    sets their own password; do not add an SMTP service merely for this bootstrap.
@@ -98,7 +98,7 @@ Only after approval:
 8. Run one approved source with strict caps; inspect every row/proposal/log manually.
 9. Expand sources and schedules only after the one-source run passes. Keep live automatic authorization off while gathering shadow false-auto and exception-capture measurements.
 
-Provisioning is not permission to crawl, call Gemini, deploy, or change DNS.
+Provisioning is not permission to crawl, call Qwen, deploy, or change DNS.
 
 ## Stop conditions
 
