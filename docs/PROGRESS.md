@@ -1,5 +1,10 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 远端离线 CI 复核
+
+- 已将 `codex/supabase-preflight` 开为 [draft PR #10](https://github.com/Insparian/scam-radar/pull/10)，用 PR 触发仓库的离线 CI；单独推送此分支不会触发该工作流。
+- PR 首轮 `application-contract` 和 `postgres-contract` 均在 GitHub Actions 成功。前者重跑 `make check/test/eval/demo`，后者从零启动合成 Supabase、lint 并执行数据库契约；没有生产数据库连接或部署。PR 未合并，仍为草稿；KV、Pages、Worker、模型、真实来源、DNS 的激活门槛未变。
+
 ## 2026-10-07 本地 Cloudflare 账户目标修正
 
 - 只读状态检查发现忽略的 `.env` 中 `CLOUDFLARE_ACCOUNT_ID` 仍指向旧共享账户，而 `SCAM_RADAR_KV_ACCOUNT_ID` 未填。已将这两个非密钥字段改为版本化专用账户 ID；不显示或修改任何密钥。KV namespace ID 仍空，六个激活开关仍关闭。
