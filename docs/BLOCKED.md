@@ -5,7 +5,7 @@
 - 两组离线改动、Worker 账户保护及新账户 ID 配置已在 `codex/supabase-preflight` 验证；完整离线套件通过。提交/推送状态见 `docs/PROGRESS.md` 当日条目。
 - Rui 回复 `proceed` 后，已在同一登录下创建专用 `Scam Radar` Cloudflare 账户，账户 ID 已写入版本化配置。Billing 显示 `Workers Free` Active，未绑定付款方式；现有共享账户其他 Workers/KV 未改。现有预览仍在共享账户，尚未迁移或检查线上站点。
 - 新 KV 备份协议只在本地合成数据验证；真实路径将是 Supabase → 受保护的 GitHub runner → 加密 → 独立账户 Workers KV。备份 Worker 只负责唤醒 GitHub，不持有数据库或 KV 密钥。没有创建 Worker/KV、读生产数据或上传。
-- **上线仍阻塞：** 需另行批准创建 Pages、Worker、KV 等资源与预览迁移；新账户 Pages 的精确项目名/返回域名要先确定，旧预览工作流仍写死旧账户项目名和 URL，不能直接切换令牌重跑。实测真实密文体积不超过 64 MiB、确定不超过 1 GB 的保留/删除策略、恢复密钥保管、独立数据库完整恢复及备份缺席/容量告警。当前没有自动删除，长期每日备份会耗尽容量。既有共享账户的 Secrets 不能沿用。
+- **上线仍阻塞：** 需另行批准创建 Pages、Worker、KV 等资源与预览迁移。KV 创建表单已备好空命名空间名 `scam-radar-encrypted-backups`；EU 持久存储与 Standard 全球存储的选项和创建授权正在等 Rui 答复，未提交。新账户 Pages 的精确项目名/返回域名要先确定，旧预览工作流仍写死旧账户项目名和 URL，不能直接切换令牌重跑。实测真实密文体积不超过 64 MiB、确定不超过 1 GB 的保留/删除策略、恢复密钥保管、独立数据库完整恢复及备份缺席/容量告警。当前没有自动删除，长期每日备份会耗尽容量。既有共享账户的 Secrets 不能沿用。
 - 真实来源、模型、生产迁移、发布、DNS、大陆访问与 7 天稳定性关卡仍开放。下文 R2 是历史候选，现行计划见 [KV 备份](runbooks/kv-backup.md) 与 [账户分工](runbooks/dedicated-cloudflare-account.md)。
 
 ## 2026-10-07 账户创建前只读核查后具体阻塞（历史状态）

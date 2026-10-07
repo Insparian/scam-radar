@@ -1,5 +1,10 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 新账户 KV 创建前只读核对
+
+- 已登录的专用 `Scam Radar` Cloudflare 账户仍显示 Workers Free、无付款方式；Workers KV 命名空间列表为空。只打开创建表单，填写拟用名 `scam-radar-encrypted-backups`，选中 EU Jurisdiction，未点击 Create。
+- 表单与[官方数据位置说明](https://developers.cloudflare.com/kv/reference/data-location/)显示：Standard 会全球缓存；EU Jurisdiction 仅限制持久存储，边缘缓存仍可在区外，且创建后不可更改。已把含地区选项的精确授权问题交给 Rui；授权前不创建资源。
+
 ## 2026-10-07 KV 写后验证延迟修补
 
 - Cloudflare 官方说明 KV 会缓存不存在的 key，跨地点可见性可能超过 60 秒。原备份适配器在写后约 1.5 秒就判未验证，可能将正常写入误报为失败。现延长为七段总计 91 秒的只读回读等待；仍不盲目重写、不发布未验证的 manifest。
