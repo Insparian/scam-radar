@@ -10,6 +10,7 @@
 
 - Rui 明确授权操作后，恢复现有 `scam-radar` Free 项目；控制台显示 Healthy，地区仍为 `eu-central-1`（Frankfurt），项目 URL 为 `https://eswsxqgsdwsovuapvtld.supabase.co`。未读取密钥、业务数据或执行 SQL。
 - 线上迁移清单只有首批 7 个，最新为 `20260917000100_evidence_resolution_events`；仓库有 22 个前向迁移，故 15 个待应用。仅作只读比较，未运行生产迁移。
+- 离线审阅待应用迁移时发现 `20260920000600_irrelevant_text_retention.sql` 顶层会一次性清除已有 `irrelevant` 版本的 `clean_text`，且安装后续清理触发器；其他待应用文件的顶层结构变更和函数替换不等于这项旧数据清理已获批准。已在上线步骤加入受影响行数、独立恢复和精确确认关卡；未查询生产行数、未执行迁移。
 - Free 备份页面明确显示不含项目定时备份。Data API 控制台显示 0/24 张表、0/50 个函数对 API 暴露，自动暴露新对象关闭；这使审核站 RPC 可用性成为待验证项，不能凭本地测试宣称生产可用。未改 API/grants/RLS 配置。
 - 生产迁移、数据库读写、真实来源/模型调用、备份上传、Pages 发布和 DNS 均保持关闭。具体阻塞见 `docs/BLOCKED.md` 顶部。
 - 生产迁移 workflow 的 `scripts/supabase_foundation.py` 原来只查首批 7 个迁移，漏装后续版本仍可能报绿，且成功文案误写 6。已改为从仓库迁移文件读取完整版本集合，要求数据库版本集合精确相等。新增回归测试；在本机合成 PostgreSQL 上实际执行相同 SQL，22 个版本返回 true，故意去掉 1 个期望版本返回 false。`make check`、`make test` 通过（141 Python、9 浏览器）；首次测试因沙箱拒绝 localhost bind 失败，获准本机回环后通过。未连接生产数据库。

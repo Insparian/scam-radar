@@ -104,7 +104,7 @@ Before complete live-system activation, also show Rui:
 
 Only after approval:
 
-1. Reuse the verified Supabase and Pages projects; resume the paused Supabase project only after separate approval. Create or enable other resources only when their exact activation is approved. R2 currently requires a subscription that may incur charges; do not open it on the assumption that free monthly usage prevents billing.
+1. Reuse the verified Supabase and Pages projects. The existing Frankfurt Supabase project was restored with Rui's separate authorization on 2026-10-07 and showed Healthy. Create or enable other resources only when their exact activation is approved. R2 currently requires a subscription that may incur charges; Rui permits only genuinely free Cloudflare services, so do not open R2 on the assumption that free monthly usage prevents billing.
 2. Store secrets in GitHub Encrypted Secrets, never repository files or workflow scope.
 3. Create the first reviewer in Supabase Auth through the Dashboard so the reviewer
    sets their own password; do not add an SMTP service merely for this bootstrap.
@@ -113,13 +113,19 @@ Only after approval:
    `SUPABASE_REVIEWER_EMAIL`. Run the manual production-foundation workflow with its
    exact confirmation to apply migrations and authorize that existing Auth user in
    `admin_users`. Do not put the reviewer address in a workflow input, log, issue, or
-   repository file.
+   repository file. As of 2026-10-07 the project has only the first 7 of 22 migrations;
+   the evidence-resolution event migration is already applied. Before running the
+   foundation workflow, compare exact production and repository migration versions.
+   Migration `20260920000600_irrelevant_text_retention.sql` clears old `clean_text`
+   wherever `processing_status = 'irrelevant'`. First read-only count affected rows,
+   verify a backup in a separate recovery database, and obtain Rui's separate exact
+   confirmation for this irreversible data change. No real backup destination is
+   approved under the current free-only constraint, so this step remains blocked.
 4. Prove anon/reviewer/worker/exporter boundaries, append-only policy decisions, distinct policy/human provenance, shadow-decision rejection, and an empty exact-policy activation allowlist with production-safe checks.
-5. Apply the verified forward append-only evidence-resolution event migration before accepting live evidence. It preserves honest actor/policy provenance for accepted and rejected outcomes and labels any pre-existing terminal row `legacy_unknown` without inventing a reviewer or timestamp.
-6. Contract-test one explicit mapping from the database v2 export to every required public-web presentation field; do not activate a build that still depends on fixture-only copy.
-7. Keep collection, AI, backup, and deploy kill switches off.
-8. Run one approved source with strict caps; inspect every row/proposal/log manually.
-9. Expand sources and schedules only after the one-source run passes. Keep live automatic authorization off while gathering shadow false-auto and exception-capture measurements.
+5. Confirm the existing database v2 public-export mapping still covers every required public-web presentation field on the exact approved release; do not activate a build that still depends on fixture-only copy.
+6. Keep collection, AI, backup, and deploy kill switches off.
+7. Run one approved source with strict caps; inspect every row/proposal/log manually.
+8. Expand sources and schedules only after the one-source run passes. Keep live automatic authorization off while gathering shadow false-auto and exception-capture measurements.
 
 Provisioning is not permission to crawl, call Qwen, deploy, or change DNS.
 
