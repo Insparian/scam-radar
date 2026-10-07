@@ -114,9 +114,12 @@ The protected manual `Production Supabase foundation` workflow is the only revie
 path for the first production migration. It uses a project-scoped database URL rather
 than an account-wide Supabase access token, applies forward migrations without the
 synthetic seed, maps a pre-created Auth user from a private environment secret, and
-then checks that application tables remain empty. The verification proves that anon,
+then checks that core content tables remain empty. The verification proves that anon,
 authenticated, and service roles have no broad table grants; reviewer, worker, and
 exporter RPCs remain separated; and the live automatic-publication allowlist is empty.
+On later runs, its verifier requires the production migration versions to match every
+SQL migration in the checked-out repository exactly; a missing or unexpected version
+fails the workflow.
 
 The reviewer sets their password directly in the Supabase Dashboard bootstrap; the
 workflow neither receives that password nor adds an SMTP dependency. No real evidence

@@ -2,7 +2,8 @@
 
 ## 2026-10-07 只读核查后具体阻塞
 
-- 现有 Frankfurt Supabase `scam-radar` Free 项目已暂停；恢复项目前无法验证真实数据库/审核权限/备份恢复。只读授权不包含恢复或生产读写。
+- Rui 单独授权恢复后，现有 Frankfurt Supabase `scam-radar` Free 项目已显示 Healthy。线上迁移只到 `20260917000100_evidence_resolution_events`（7 个），仓库现有 22 个，后续 15 个仍未应用。恢复项目不等于授权生产迁移或业务读写；执行前须有可验证备份/回退方案、逐项迁移审阅及既有精确确认。
+- Supabase 的 Free 备份页面明确显示不含项目定时备份。Data API 设置显示 `0 of 24 tables exposed`、`0 of 50 functions exposed`，自动暴露新对象关闭；审核站所需 RPC 在生产环境是否可调用尚未验证。不得以本地 grants/RLS 通过推断云端审核链已可用。
 - Cloudflare 公开站及审核站 Pages 项目均无 production 部署；公开站没有 custom domain，目标 `insparian.com` 的 DNS 由 Rui 确认在 Namecheap。须在发布确认前核对 Pages 返回的精确 CNAME，不能预设或修改 DNS。
 - R2 尚未开通，开通页要求接受可按量计费的自动续订服务；当前不能做真实离站密文备份/恢复。不要以免费额度推断绝无费用。
 - 5 项远端 Dependabot 告警所涉四组包已更新并推送，GitHub 重扫确认 open 0。在线 npm 审计另有 5 个 high，均在 `eslint-config-next` 开发工具链；生产依赖审计为 0。官方自动修复建议降到不匹配的 Next 14 配置，不能为消除数字直接采用。真实上线仍受下列云端与质量关卡阻塞。

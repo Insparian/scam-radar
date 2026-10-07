@@ -5,6 +5,20 @@ import json
 import os
 import subprocess
 from collections.abc import Mapping
+from pathlib import Path
+
+
+def migration_versions() -> list[str]:
+    migration_dir = Path(__file__).resolve().parents[1] / "supabase" / "migrations"
+    versions = [path.name.split("_", 1)[0] for path in migration_dir.glob("*.sql")]
+    if not versions or any(
+        len(version) != 14 or not version.isdigit() for version in versions
+    ):
+        raise RuntimeError("repository migrations have invalid version names")
+    if len(versions) != len(set(versions)):
+        raise RuntimeError("repository migrations have duplicate versions")
+    return sorted(versions)
+
 
 BOOTSTRAP_REVIEWER_SQL = """
 with upserted_reviewer as (
@@ -23,25 +37,11 @@ from upserted_reviewer;
 FOUNDATION_QUERY = """
 select json_build_object(
     'migrations_ok', (
-        select array_agg(version order by version) = array[
-            '20260816000100',
-            '20260816000200',
-            '20260816000300',
-            '20260816000400',
-            '20260916000100',
-            '20260916000200',
-            '20260917000100'
-        ]::text[]
-        from supabase_migrations.schema_migrations
-        where version in (
-            '20260816000100',
-            '20260816000200',
-            '20260816000300',
-            '20260816000400',
-            '20260916000100',
-            '20260916000200',
-            '20260917000100'
+        select coalesce(array_agg(version::text order by version), array[]::text[]) = (
+            select coalesce(array_agg(value order by value), array[]::text[])
+            from jsonb_array_elements_text(:'expected_versions'::jsonb) as expected(value)
         )
+        from supabase_migrations.schema_migrations
     ),
     'one_reviewer', (
         select count(*) = 1
@@ -213,10 +213,11 @@ def parse_single_json_row(
 
 def verify_foundation() -> None:
     db_url = required_env("SUPABASE_DB_URL")
+    expected_versions = migration_versions()
     result = run_psql(
         db_url,
         FOUNDATION_QUERY,
-        variables=None,
+        variables={"expected_versions": json.dumps(expected_versions)},
     )
     payload = parse_single_json_row(result)
     failures = sorted(key for key, value in payload.items() if value is not True)
@@ -292,7 +293,7 @@ def verify_foundation() -> None:
         raise RuntimeError("exporter RPC did not reach its immutable-release guard")
 
     print(
-        "production Supabase foundation ok: migrations=6 reviewer=1 "
+        f"production Supabase foundation ok: migrations={len(expected_versions)} reviewer=1 "
         "application_rows=0 anon=denied reviewer=guarded worker=scoped "
         "bootstrap=scoped exporter=scoped live_policy_allowlist=empty"
     )

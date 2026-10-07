@@ -92,10 +92,42 @@ def test_foundation_query_checks_private_live_policy_allowlist() -> None:
     assert "public.active_live_publication_policies()" not in (supabase_foundation.FOUNDATION_QUERY)
 
 
-def test_foundation_query_requires_reviewer_bootstrap_migration_and_grant() -> None:
-    assert "'20260916000200'" in supabase_foundation.FOUNDATION_QUERY
+def test_foundation_query_requires_exact_repository_migrations_and_reviewer_grant() -> None:
+    versions = supabase_foundation.migration_versions()
+
+    assert "20261006000100" in versions
+    assert (
+        "jsonb_array_elements_text(:'expected_versions'::jsonb)"
+        in supabase_foundation.FOUNDATION_QUERY
+    )
+    assert "where version in" not in supabase_foundation.FOUNDATION_QUERY
     assert "'public.get_reviewer_bootstrap()'" in supabase_foundation.FOUNDATION_QUERY
     assert "reviewer_bootstrap_only_authenticated" in supabase_foundation.FOUNDATION_QUERY
+
+
+def test_verifier_passes_all_repository_versions_to_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    supplied: dict[str, str] = {}
+
+    def fake_run(
+        _db_url: str,
+        _sql: str,
+        *,
+        variables: dict[str, str],
+    ) -> subprocess.CompletedProcess[str]:
+        supplied.update(variables)
+        return subprocess.CompletedProcess(
+            args=["psql"], returncode=0, stdout='{"migrations_ok": false}\n', stderr=""
+        )
+
+    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://private")
+    monkeypatch.setattr(supabase_foundation, "run_psql", fake_run)
+
+    with pytest.raises(RuntimeError, match="migrations_ok"):
+        supabase_foundation.verify_foundation()
+
+    assert json.loads(supplied["expected_versions"]) == supabase_foundation.migration_versions()
 
 
 def test_service_role_lockdown_is_forward_only() -> None:
