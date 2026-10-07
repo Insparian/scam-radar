@@ -1,4 +1,4 @@
-name = "insparian-scam-radar-scheduler"
+name = "insparian-scam-radar-backup-scheduler"
 # Reviewed dedicated Scam Radar account; must match config/cloudflare-account.json.
 account_id = "6b22b689e228b2f4a96bac9b223cc9cf"
 main = "src/index.mjs"
@@ -6,8 +6,6 @@ compatibility_date = "2026-10-07"
 workers_dev = false
 send_metrics = false
 
-# 07:17, 13:17, 20:17 Asia/Shanghai; Cloudflare Cron uses UTC.
+# 02:43 UTC daily. This Worker holds only a repository-scoped Actions token.
 [triggers]
-crons = ["17 5,12,23 * * *"]
-
-# No live bindings are committed. Missing ENABLED keeps every cron invocation inert.
+crons = ["43 2 * * *"]

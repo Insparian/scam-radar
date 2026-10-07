@@ -61,6 +61,8 @@ jobs:
           test "$SCAM_RADAR_DEPLOY_ENABLED" = "false"
           test "$SCAM_RADAR_BACKUP_ENABLED" = "false"
           command -v psql >/dev/null
+      - name: Refuse existing data or unexpected migration history
+        run: python scripts/supabase_foundation.py preflight
       - name: Preview forward migrations
         run: npx --yes supabase@2.115.0 db push --db-url "$SUPABASE_DB_URL" --include-all --dry-run
       - name: Apply forward migrations

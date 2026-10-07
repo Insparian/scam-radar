@@ -6,7 +6,7 @@
 本次任务只交付离线代码和本包，不执行真实试运行或正式发布。
 下列推荐值不是已有授权。
 
-2026-10-07：Rui 只允许真正免费的 Cloudflare 服务。下文 R2 是旧备份候选，
+2026-10-07：Rui 只允许真正免费的 Cloudflare 服务。Decision 015 将 Scam Radar 移向独立 Free 账户；其 ID 尚未审核，所有 Cloudflare 写操作被配置挡住。备份新候选为 Workers KV Free，实际保留/恢复仍未验收。[账户分工](runbooks/dedicated-cloudflare-account.md) 与 [KV 备份关卡](runbooks/kv-backup.md) 优先于下文旧 R2 说明。下文 R2 是旧备份候选，
 因开通需接受超额计费而未获授权；在另有满足真实密文恢复的目的地获批前，
 真实业务数据写入与正式上线关卡保持关闭。
 
@@ -78,9 +78,9 @@
 | **选定一个**模型端点 | 已脱敏公开正文、固定 prompt/schema、候选模式信息 | 专用 API key；首轮最多 10 次，单输入 10,000 字符、输出 4096 tokens；未核实免费额度前费用预算为 0、禁止调用 | AI 开关 false；不自动换模型 |
 | 现有 Frankfurt Supabase | 来源元数据、受限正文、AI 结果、证据映射、Heat、审核/发布状态 | worker 仅狭窄 RPC；禁止直接表写、禁止代替 reviewer；实际地区/配置须激活前再核验 | 停采集/AI；保留旧静态网站 |
 | Supabase Auth/reviewer | 登录会话、证据决定、审核理由 | 现有独立 reviewer；Auth 登录不等于角色授权 | 禁用 reviewer、撤销会话；保留审计 |
-| Cloudflare Pages | 通过扫描的同一 release 静态产物 | Pages Write，不授 DNS/Workers/R2；令牌影响同账户项目，非单项目隔离 | deploy=false；不影响现有页面 |
+| 独立 Cloudflare Free 账户 Pages | 通过扫描的同一 release 静态产物 | 新账户的 Pages Write，不授 DNS/Workers/KV；须与版本化账户 ID 一致 | deploy=false；不影响现有页面 |
 | Cloudflare Workers Free Cron → GitHub Actions | 固定仓库/工作流/`main`、单一已批准来源 key、`dry_run=false`；独立 GitHub Actions token | 仅此仓库的 Actions: write；Worker 无 Pages/Supabase/模型凭据，默认关闭，需核实 Workers Free | Worker scheduler enabled=false；GitHub collection enabled=false 可独立阻断 |
-| 私有 R2 | age 密文、随机对象名、SHA-256、字节数及时间；不含明文 dump | 独立私有桶，仅对象读/列举/写权限以便回读校验；无删除/桶管理；每日 02:43 UTC 一次，推荐保留 7 日+4 周，删除策略另行明确批准 | backup=false；禁止公共访问 |
+| 独立账户 Workers KV Free | age 密文分块、随机对象名、SHA-256、字节数及时间；不含明文 dump | 账户级 KV 读写令牌，仅此独立账户；每份密文最多 64 MiB，每块 16 MiB；保留/删除与完整恢复尚未批准 | backup=false；Worker backup scheduler enabled=false |
 | 公众浏览器 → Pages | 页面/静态资产请求、普通访问元数据 | 无用户账户、无跟踪 SDK；关键词仅在内存 | 无搜索上报路径 |
 
 模型目的地分别为智谱 `open.bigmodel.cn`、百炼所选地区的 DashScope/工作区域名、
@@ -117,12 +117,13 @@ Rui 已说明没有 Gemini API 项目，并选择现有百炼北京工作区；�
 
 推荐 RPO 24 小时、RTO 4 小时作为初始目标，不声称已测到。
 恢复 identity 离线两份保管，CI 仅保存 age public recipient；不上传明文。
-备份执行器固定 PostgreSQL 17.9 官方镜像摘要、age 1.3.2 与 rclone 1.75.1
-校验值，见 [ADR-008](decisions/008-free-tier-continuity-and-encrypted-backups.md)。
+备份执行器固定 PostgreSQL 17.9 官方镜像摘要与 age 1.3.2 校验值；
+KV 上传使用 Python 标准库与账户绑定检查，旧 rclone 仅留作本地 S3 演练。
 它需要 Supabase 直连或 session 连接的**精确主机/用户**、数据库密码、从 Supabase
 后台取得的 CA 证书，以 `verify-full` 验证 TLS。推荐先用真实对象恢复一次，
 再开启每日定时；当前仅合成库 → 本地 S3 的密文回读和合成库恢复通过。
-推荐 R2 凭据仅本桶对象读/列举/写，不能删除，方便核验而不扩大破坏权限。
+KV 令牌限独立 Cloudflare 账户的 Workers KV Storage Write；该权限属账户级，
+故必须隔离账户。当前未定保留/删除规则，不得把本地成功等同持续备份。
 真实数据写入之前必须完成独立恢复，验证各表计数、RLS、worker 无审批权、
 exact release 导出相同。合成演练证据见 PROGRESS；合成密钥不能用于生产。
 
@@ -137,5 +138,5 @@ exact release 导出相同。合成演练证据见 PROGRESS；合成密钥不能
 ## 真实环境必须补测
 
 人工标注 Gold Set；真实模型质量/价格/额度；每个来源条款/robots/解析和七天稳定性；
-审核队列实际负担；真实 R2 恢复；大陆至少三种网络、iOS/Android 和微信内置浏览器。
+审核队列实际负担；真实 KV 密文完整恢复；大陆至少三种网络、iOS/Android 和微信内置浏览器。
 推荐至少 10 次关键路径尝试、成功率 ≥90%，记录中位数/p95；当前均不能用本地 Chromium 代替。

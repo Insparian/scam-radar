@@ -26,9 +26,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REVIEWER_PROJECT: insparian-scam-radar-reviewer
   REVIEWER_BRANCH: reviewer
-  REVIEWER_URL: https://reviewer.insparian-scam-radar-reviewer.pages.dev
 
 jobs:
   provision-empty-project:
@@ -37,6 +35,8 @@ jobs:
     timeout-minutes: 10
     environment:
       name: cloudflare-preview
+    env:
+      REVIEWER_PROJECT: ${{ vars.SCAM_RADAR_REVIEWER_PAGES_PROJECT }}
     steps:
       - name: Require exact human confirmation
         env:
@@ -46,6 +46,10 @@ jobs:
             echo "Confirmation did not match. Cloudflare was unchanged."
             exit 1
           }
+          [[ "$REVIEWER_PROJECT" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || {
+            echo "Dedicated reviewer Pages project is missing or invalid."
+            exit 1
+          }
       - name: Create the empty Direct Upload project if absent
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -53,6 +57,7 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$CLOUDFLARE_API_TOKEN"
+          python scripts/cloudflare_account_guard.py --account-id "$CLOUDFLARE_ACCOUNT_ID"
           endpoint="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$REVIEWER_PROJECT"
           response="$RUNNER_TEMP/reviewer-project.json"
           status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
@@ -93,8 +98,11 @@ jobs:
     timeout-minutes: 30
     environment:
       name: cloudflare-preview
-      url: https://reviewer.insparian-scam-radar-reviewer.pages.dev
+      url: ${{ vars.SCAM_RADAR_REVIEWER_PREVIEW_URL }}
     env:
+      REVIEWER_PROJECT: ${{ vars.SCAM_RADAR_REVIEWER_PAGES_PROJECT }}
+      REVIEWER_URL: ${{ vars.SCAM_RADAR_REVIEWER_PREVIEW_URL }}
+      REVIEWER_ACCESS_HOST: ${{ vars.SCAM_RADAR_REVIEWER_ACCESS_HOST }}
       SCAM_RADAR_ENV: reviewer
       SCAM_RADAR_COLLECT_ENABLED: "false"
       SCAM_RADAR_AI_ENABLED: "false"
@@ -108,6 +116,25 @@ jobs:
         run: |
           test "$CONFIRMATION" = "DEPLOY PROTECTED REVIEWER" || {
             echo "Confirmation did not match. Nothing was deployed."
+            exit 1
+          }
+          [[ "$REVIEWER_PROJECT" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || {
+            echo "Dedicated reviewer Pages project is missing or invalid."
+            exit 1
+          }
+          [[ "$REVIEWER_URL" =~ ^https://reviewer\.[a-z0-9]+(-[a-z0-9]+)*\.pages\.dev$ ]] || {
+            echo "Dedicated reviewer Pages preview URL is missing or invalid."
+            exit 1
+          }
+          reviewer_subdomain="${REVIEWER_URL#https://reviewer.}"
+          reviewer_subdomain="${reviewer_subdomain%.pages.dev}"
+          [[ "$reviewer_subdomain" == "$REVIEWER_PROJECT"* ]] && \
+            [ "$REVIEWER_URL" != "https://reviewer.insparian-scam-radar-reviewer.pages.dev" ] || {
+            echo "Reviewer preview URL does not match the dedicated Pages target."
+            exit 1
+          }
+          [[ "$REVIEWER_ACCESS_HOST" =~ ^[a-z0-9]+(-[a-z0-9]+)*\.cloudflareaccess\.com$ ]] || {
+            echo "Dedicated reviewer Access login hostname is missing or invalid."
             exit 1
           }
       - name: Require the reviewed Access gate
@@ -146,7 +173,7 @@ jobs:
       - name: Verify Access blocks the empty preview before build or upload
         env:
           SCAM_RADAR_ALLOW_REVIEWER_SMOKE: "true"
-        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL"
+        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL" --access-host="$REVIEWER_ACCESS_HOST"
       - name: Install locked build dependencies
         run: |
           python -m pip install uv==0.12.5
@@ -174,6 +201,7 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$CLOUDFLARE_API_TOKEN"
+          python scripts/cloudflare_account_guard.py --account-id "$CLOUDFLARE_ACCOUNT_ID"
           npx --yes wrangler@4.130.0 pages deploy web/out \
             --project-name="$REVIEWER_PROJECT" \
             --branch="$REVIEWER_BRANCH" \
@@ -182,7 +210,7 @@ jobs:
       - name: Verify Access still blocks the deployed preview
         env:
           SCAM_RADAR_ALLOW_REVIEWER_SMOKE: "true"
-        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL"
+        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL" --access-host="$REVIEWER_ACCESS_HOST"
       - name: Record the narrow activation scope
         run: |
           {

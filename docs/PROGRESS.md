@@ -1,5 +1,101 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 专用审核站 Access 登录域名校验
+
+- 审核站旧探针只要求跳转到任意 `*.cloudflareaccess.com`，迁入新账户后可能误把旧 Zero Trust 团队的登录页当成新账户保护。现要求 `cloudflare-preview` 环境提供专用账户的精确 `SCAM_RADAR_REVIEWER_ACCESS_HOST`；上传前后的同一 HEAD 探针只接受该域名的 Access 跳转。缺值、错误格式或其他团队域名均拒绝；未增加网络请求或依赖。
+- 专用账户尚未建立 Zero Trust 团队，故该值当前未知，审核站上传继续失败关闭。对空项目预览别名能否在首次上传前完成 Access HEAD 探针，仍需获批创建/设置后实测；不能以文档推断已经可用。
+- `make check`、`make test` 通过：158 Python、9 Node、9 浏览器；工作流 YAML 解析及 4 个本地环境变量守卫案例通过。只跑本地合成/localhost，没有访问审核站预览或发出新的外部请求。
+
+## 2026-10-07 专用账户审核站 Access 前置核对
+
+- 新账户 Workers & Pages 页显示 `Set up Zero Trust before requiring Access sign-in`；进入设置入口只读查看，提供 `Zero Trust Free $0 / seat / month`、50 seat 上限，旁边有付费 Standard。未选套餐、未接受条款、未创建 Zero Trust 组织或 Access 策略。审核站部署前还须在专用账户开通 Free 并验证未登录访问被拦截；不能沿用旧共享账户的 Access 保护。
+
+## 2026-10-07 Pages 空项目创建入口只读核对
+
+- 在专用 `Scam Radar` Cloudflare 账户（ID 与版本化配置一致）查看 Workers & Pages：显示 `No projects found`。Direct Upload 界面允许先填项目名、单独点击 `Create project`，上传资产是下一步；因此可以只建空项目。拟用公开项目名 `insparian-scam-radar-public` 和审核项目名 `insparian-scam-radar-private-reviewer` 均经表单可用性检查，界面分别预告同名 `.pages.dev` 域名。未点击创建、未上传、未部署，也未进入旧共享账户。
+- [Cloudflare Direct Upload 官方说明](https://developers.cloudflare.com/pages/get-started/direct-upload/#production-branch-configuration)：创建页不提供生产分支设置；改变 Direct Upload 项目的生产分支须用 Update Project API。审核站要求 `production-disabled`，因此不能仅靠当前浏览器创建页保证这个安全设置。现有 `reviewer-control-plane.yml` 的获批空项目创建路径已明确提交此值；它还需专用账户的细粒度 API token、主分支代码及单独激活。
+- 已就两个空 Pages 项目向 Rui 提出精确创建授权；答复前保持表单，不提交。正式创建后仍须从 Cloudflare 返回结果核对真实子域名，再填 `cloudflare-preview` 环境变量；可用性预告不等于项目已存在。
+
+## 2026-10-07 专用 Pages 目标工作流准备
+
+- 公开 fixture 预览和审核站工作流原来写死共享 Cloudflare 账户的项目名与 `pages.dev` URL，换专用账户令牌会指错目标。现改用 `cloudflare-preview` 环境中独立的项目名/实际分支别名变量；值缺失、格式错误、URL 子域名前缀与项目名不符或使用旧共享账户 URL 时，在上传前拒绝。账户 ID 保护和审核站 Access 关卡保留。
+- 本地 `make check`、`make test`（156 Python、9 Node、9 浏览器）、两份工作流 YAML 解析、8 个纯本地目标校验案例通过。首次测试因沙盒阻止 localhost bind 失败，获本机端口权限后同一套件全绿。没有创建 Pages 项目、部署、访问预览站或修改旧账户。真实项目名/实际 URL 仍需在获批创建后核对并填入 GitHub 环境。
+
+## 2026-10-07 KV 免费容量保守测算
+
+- 对照 Cloudflare 官方 Free 1 GB 存储/超额失败规则，用十进制 10 亿字节做保守预算：14 份各 64 MiB 的上限备份占 939,524,096 字节，剩余 60,475,904 字节，不够再暂存第 15 份。12 份上限备份占 805,306,368 字节，剩余 194,693,632 字节，仍未计 manifest 和残留分块。这只说明保留策略必要，不代表选择了自动删除天数；真实密文体积/独立恢复未测。
+
+## 2026-10-07 远端离线 CI 复核
+
+- 已将 `codex/supabase-preflight` 开为 [draft PR #10](https://github.com/Insparian/scam-radar/pull/10)，用 PR 触发仓库的离线 CI；单独推送此分支不会触发该工作流。
+- PR 首轮 `application-contract` 和 `postgres-contract` 均在 GitHub Actions 成功。前者重跑 `make check/test/eval/demo`，后者从零启动合成 Supabase、lint 并执行数据库契约；没有生产数据库连接或部署。PR 未合并，仍为草稿；KV、Pages、Worker、模型、真实来源、DNS 的激活门槛未变。
+
+## 2026-10-07 本地 Cloudflare 账户目标修正
+
+- 只读状态检查发现忽略的 `.env` 中 `CLOUDFLARE_ACCOUNT_ID` 仍指向旧共享账户，而 `SCAM_RADAR_KV_ACCOUNT_ID` 未填。已将这两个非密钥字段改为版本化专用账户 ID；不显示或修改任何密钥。KV namespace ID 仍空，六个激活开关仍关闭。
+- `scripts/check_env.py` 通过；未发送请求、创建资源或改动共享账户。用户尚需对 KV 空命名空间的 EU/Standard 位置和创建作出选择。
+
+## 2026-10-07 新账户 KV 创建前只读核对
+
+- 已登录的专用 `Scam Radar` Cloudflare 账户仍显示 Workers Free、无付款方式；Workers KV 命名空间列表为空。只打开创建表单，填写拟用名 `scam-radar-encrypted-backups`，选中 EU Jurisdiction，未点击 Create。
+- 表单与[官方数据位置说明](https://developers.cloudflare.com/kv/reference/data-location/)显示：Standard 会全球缓存；EU Jurisdiction 仅限制持久存储，边缘缓存仍可在区外，且创建后不可更改。已把含地区选项的精确授权问题交给 Rui；授权前不创建资源。
+
+## 2026-10-07 KV 写后验证延迟修补
+
+- Cloudflare 官方说明 KV 会缓存不存在的 key，跨地点可见性可能超过 60 秒。原备份适配器在写后约 1.5 秒就判未验证，可能将正常写入误报为失败。现延长为七段总计 91 秒的只读回读等待；仍不盲目重写、不发布未验证的 manifest。
+- 新增离线延迟可见/超时测试。`make check`、`make test` 通过：156 Python、9 Node、9 浏览器。没有 KV 网络请求、备份上传、删除或外部激活。
+
+## 2026-10-07 云端迁移说明校准
+
+- 修正初始化说明和数据流总览中“专用 Cloudflare 账户尚未创建、ID 为空”的过期描述。现在账户已建立且 ID 已审核；Pages、Worker、KV 仍待各自批准和创建。
+- 预览 Pages 工作流仍绑定旧项目名与 URL，需取得新账户实际项目名/域名后同步修改，不能仅替换凭据。空 KV 命名空间的单独授权已向 Rui 请求，尚未创建。
+
+## 2026-10-07 专用 Cloudflare Free 账户已建立
+
+- Rui 此轮 `proceed` 后，在同一登录下创建 `Scam Radar` 独立 Cloudflare 账户，控制台账户 ID 为 `6b22b689e228b2f4a96bac9b223cc9cf`。Billing → Subscriptions 显示 `Workers Free` 为 `Active`，`No payment method on file`；没有选择升级。
+- ID 已写入 `config/cloudflare-account.json` 和两个 Worker 配置。现有共享账户、其他项目 Workers/KV 未改；尚未为新账户创建 Pages、Worker、KV 命名空间或令牌。真实采集、模型、备份、发布与 DNS 未激活。
+- 已把整合分支 `codex/supabase-preflight` 推送到 GitHub。账户 ID 填写后，`make check`、`make test`（154 Python、9 Node、9 浏览器）和两个 Worker 的 Wrangler 离线 dry-run 再次通过。
+
+## 2026-10-07 Worker 部署账户保护补强
+
+- 发现两个 Worker 的 Wrangler 配置原先没有固定账户 ID；若直接执行 Wrangler，可能误选承载其他项目的现有 Cloudflare 账户。现已在两个配置加入全零占位 ID，待专用账户单独获批并审核后才可一起替换为 `config/cloudflare-account.json` 的 ID；新增本地一致性测试。
+- 本机缓存的 Wrangler 4.130.0 对两个 Worker `deploy --dry-run` 均通过。`make check` 与 `make test` 通过：154 Python、9 Node、9 浏览器；首次受限沙盒重跑时本机端口权限不足，获准本机端口后全绿。没有部署、访问控制台或改云端资源。
+
+## 2026-10-07 两条离线工作合并验收
+
+- 将 Supabase 生产迁移前检查与 Decision 015 的独立 Cloudflare Free 账户/KV 备份代码合到本地 `codex/supabase-preflight` 分支；没有推送、部署或改云端资源。解决 `docs/PROGRESS.md`、`docs/data-flow.md` 两处文档冲突，保留两个数据流 F11/F12。
+- 合并后 `make check/test/eval/demo/collect-dry-run` 全部退出 0：153 Python、9 个 Node 调度器、9 个浏览器、100 recorded、100 个静态文件；15 个来源仍关闭，`launch_qualified=false`。结果只证明离线合成流程。
+- 尝试按既有只读授权继续核查 Cloudflare 创建入口时，电脑处于锁屏且自动解锁失败，浏览器不可用；未访问控制台或操作账户。待 Rui 解锁后可续查资格；创建新账户仍需单独批准。
+
+## 2026-10-07 Decision 015 离线推进
+
+- Rui 对独立 Cloudflare Free 账户方案回复 `proceed`。已记录 `DECISIONS/015`；未创建账户、迁移 Pages、部署 Worker、上传备份或改 DNS。
+- 新增版本化专用账户 ID 检查。ID 尚未审核填写，因此现有 Cloudflare Pages 工作流和未来 KV 上传均拒绝写入；保护共享账户其他项目。新建独立备份 Cron Worker 离线代码，移除备份工作流 GitHub schedule，改由默认关闭的 Worker dispatch。现有采集 Cron 仍默认关闭。
+- 新增 Cloudflare KV 密文分块上传/读回验证适配器：每块 16 MiB，整份上限 64 MiB，先验本地 SHA-256，写后回读，manifest 最后写；不自动删除。旧 R2 本地恢复测试保留，真实工作流改指 KV。新增本地协议与账户隔离测试。
+- 本地 `make check`、`make test`、`make eval`、`make demo`、`make collect-dry-run` 通过：148 Python、9 个调度器 Node、9 个浏览器、100 recorded、100 个静态文件；15 来源仍关闭，`launch_qualified=false`。固定 Wrangler 4.130.0 对备份 Worker `deploy --dry-run` 成功，1.46 KiB、无绑定、无部署。首次离线 npx 缓存入口缺包失败，随后直接调用本机已缓存的同版本 Wrangler 通过；没有使用在线安装。
+- 数据去向、停机开关及尚未满足的容量/保留/独立恢复门槛见 [KV runbook](runbooks/kv-backup.md)、[账户 runbook](runbooks/dedicated-cloudflare-account.md) 和 `docs/BLOCKED.md` 顶部。
+
+## 2026-10-07 生产迁移前检查补强
+
+- Supabase 迁移前只读检查原先只覆盖主要内容表，可能漏掉独立存在的审核项、流水线运行、来源状态/结果、审核事件或租约。现已把这些运行表纳入“空业务数据”判定；非空库在任何 `db push` 前停止。
+- 用现有合成本地 PostgreSQL 实际执行相同 SQL：返回 16 个已应用版本、`application_data_empty=false`，无 SQL 错误；只输出计数和布尔值，未连接生产库。此检查的 Supabase→受保护 GitHub runner 汇总数据流仍未启用，需单独激活批准。
+- `make check`、`make test` 通过（146 Python、6 个采集调度器测试、9 个浏览器测试）；静态产物秘密扫描通过。没有运行生产迁移或外部请求。
+
+## 2026-10-07 Cloudflare 账户隔离调研（历史）
+
+- Rui 指出当前 Cloudflare 账户中有其他项目 Workers，要求明确各账户职责并避免影响其运行。只读控制台证据显示现有共享账户确有其他项目 Workers 与两个 KV 命名空间；未查看这些命名空间的内容或修改资源。[官方账户说明](https://developers.cloudflare.com/fundamentals/account/create-account/)允许符合资格的现有用户在同一登录下创建额外 Free 账户；[KV 限额](https://developers.cloudflare.com/kv/platform/limits/)和[Workers 限额](https://developers.cloudflare.com/workers/platform/limits/)按账户共享，[KV API 权限](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)属账户级。Rui 随后对独立 Free 账户的 Decision 015 回复 `proceed`；离线实现已本地提交，未推送。未建账户、迁移 Pages、部署 Worker 或写 KV。
+- 同一登录下的 Cloudflare 账户切换菜单已只读显示 `Create Account` 入口；现有账户的当前成员权限详情显示 `Super Administrator - All Privileges`。这满足官方“现有账户 Super Administrator”条件，但未核查登录账户的七天年龄或最终创建页，因此不能宣称创建资格全部验证。未点击创建入口、提交表单或变更权限。
+
+## 2026-10-07 本地填写项复核
+
+- 只读解析忽略的 `.env`，仅输出字段是否非空/关闭，不显示值：百炼评测与 worker key、Supabase 项目 URL、公开 Supabase URL、Cloudflare account ID 已填；六个真实激活开关均为 `false`。生产 service key、数据库 URL、reviewer 邮箱、公开 publishable key、Cloudflare API/Pages token 仍空。R2 已排除在当前免费方案外，不要求填写其 bucket/访问 key。`.env` 不会自动同步到 GitHub Secrets/Variables 或 Cloudflare Worker secrets；这些位置仍须在各自激活关卡配置。未试用任何凭据或连接云端。
+
+## 2026-10-07 免费备份替代方案调研（历史）
+
+- [Cloudflare Workers KV Free 价格](https://developers.cloudflare.com/kv/platform/pricing/)与[限额](https://developers.cloudflare.com/kv/platform/limits/)显示：免费方案含 1 GB 存储、每天 1,000 次写入，超额操作失败；单值最多 25 MiB。[KV 一致性说明](https://developers.cloudflare.com/kv/concepts/how-kv-works/)显示跨地点读取最终一致，不能用覆盖同一 key 的方式提交备份。适合研究“`age` 密文分块、不可变对象名、最后提交清单、异地回读校验”的纯免费候选，仍需真实容量/恢复验证和 Rui 的架构决策；未创建服务或发送数据。
+- 现有 `.github/workflows/backup.yml` 仍有 GitHub 定时触发；公开仓库 60 天无活动自动停用的风险也适用于它。即使更换 R2 存储，仍须另设计可靠调度与缺席告警。`D1` 免费方案有 5 GB 账户存储、单行 2 MB 上限，但为数据库存储而非备份对象接口；暂不作为首选。未改工作流。
+- Rui 先前授权的 Cloudflare 控制台只读核查显示：当前账户 Workers 套餐为 `Free`（`Current plan`），页面列出 Workers KV 免费存储 1 GB、写/删/列举每天 1,000 次、Cron Triggers 每账户 5 个。Workers KV 页面可打开并显示现有命名空间，但没有 Scam Radar 专用命名空间；未点击创建、升级、部署或读取既有命名空间数据。这只证明账户当前套餐和 KV 入口可用，不能替代实际备份容量、权限及独立恢复验收。
+
 ## 2026-10-07 自动监测调度可靠性核查
 
 - 本地 `collect.yml` 设有每天 3 次北京时间计划运行，并保留外部激活开关。[GitHub 官方规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)确认 timezone 语法有效，但公开仓库 60 天无活动会自动停用计划工作流，且高负载时计划运行可能延迟或丢弃。当前没有独立检测“本应运行却完全没有运行”的心跳，因此不能把 cron 文件存在当作长期自动监测已验收。
@@ -19,6 +115,7 @@
 - Rui 明确授权操作后，恢复现有 `scam-radar` Free 项目；控制台显示 Healthy，地区仍为 `eu-central-1`（Frankfurt），项目 URL 为 `https://eswsxqgsdwsovuapvtld.supabase.co`。未读取密钥、业务数据或执行 SQL。
 - 线上迁移清单只有首批 7 个，最新为 `20260917000100_evidence_resolution_events`；仓库有 22 个前向迁移，故 15 个待应用。仅作只读比较，未运行生产迁移。
 - 离线审阅待应用迁移时发现 `20260920000600_irrelevant_text_retention.sql` 顶层会一次性清除已有 `irrelevant` 版本的 `clean_text`，且安装后续清理触发器；其他待应用文件的顶层结构变更和函数替换不等于这项旧数据清理已获批准。已在上线步骤加入受影响行数、独立恢复和精确确认关卡；未查询生产行数、未执行迁移。
+- 生产 foundation 入口原先只在 `db push` 后验证空库，可能先触发上述清理、后才失败。现在在 `db push --dry-run` 之前新增只读预检：已应用迁移必须是仓库精确前缀，业务表必须为空，待清理正文数必须为 0；否则阻断。单元反例覆盖错误版本、非空库和待清理正文。预检仅在未来独立批准的手动 GitHub 工作流运行时，把迁移版本和聚合状态从 Supabase 送至受保护 runner；成功日志仅报告 0 和版本数量。未运行生产工作流或查询生产数据。
 - Free 备份页面明确显示不含项目定时备份。Data API 控制台显示 0/24 张表、0/50 个函数对 API 暴露，自动暴露新对象关闭；这使审核站 RPC 可用性成为待验证项，不能凭本地测试宣称生产可用。未改 API/grants/RLS 配置。
 - 生产迁移、数据库读写、真实来源/模型调用、备份上传、Pages 发布和 DNS 均保持关闭。具体阻塞见 `docs/BLOCKED.md` 顶部。
 - 生产迁移 workflow 的 `scripts/supabase_foundation.py` 原来只查首批 7 个迁移，漏装后续版本仍可能报绿，且成功文案误写 6。已改为从仓库迁移文件读取完整版本集合，要求数据库版本集合精确相等。新增回归测试；在本机合成 PostgreSQL 上实际执行相同 SQL，22 个版本返回 true，故意去掉 1 个期望版本返回 false。`make check`、`make test` 通过（141 Python、9 浏览器）；首次测试因沙箱拒绝 localhost bind 失败，获准本机回环后通过。未连接生产数据库。

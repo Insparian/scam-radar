@@ -493,6 +493,9 @@ def run() -> int:
     parser.add_argument("--artifact-hash")
     args = parser.parse_args()
     _live_gate(args.action)
+    from scripts.cloudflare_account_guard import require_dedicated_account
+
+    require_dedicated_account(args.account_id)
     token = os.getenv("CLOUDFLARE_API_TOKEN", "")
     canonical_origin = args.canonical_origin
     if canonical_origin is not None and canonical_origin != os.getenv(

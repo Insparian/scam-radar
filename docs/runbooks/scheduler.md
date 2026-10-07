@@ -2,6 +2,8 @@
 
 Decision [014](../../DECISIONS/014-free-cloudflare-scheduler.md) moves the collection clock to Cloudflare Workers Free. The Worker only dispatches the existing GitHub `collect.yml`; it does not fetch sources, call a model, read Supabase, or publish. GitHub retains the one-source and activation gates. This runbook does not authorize deployment or live collection.
 
+Decision [015](../../DECISIONS/015-isolated-cloudflare-free-account.md) additionally requires this Worker in the new dedicated Cloudflare Free account. The backup clock is a different Worker described in [KV backup](kv-backup.md). The existing shared account is not a deployment target.
+
 ## Offline contract
 
 - Source/config/tests: `cloudflare/scheduler/src/`, `wrangler.toml`, and `test/`.
@@ -12,7 +14,7 @@ Decision [014](../../DECISIONS/014-free-cloudflare-scheduler.md) moves the colle
 
 ## Activation values and data flow
 
-All cloud steps below need separate final activation approval. First verify the Cloudflare account is on **Workers Free**, the Cron limit is available, and no paid Workers plan is being selected. Deploy only this Worker from the reviewed commit; `wrangler.toml` starts it inert and disables Wrangler usage telemetry. Note that `wrangler secret put` creates a new Worker deployment immediately, so treat each secret change as an activation action.
+All cloud steps below need separate final activation approval. The dedicated account's Billing page currently shows **Workers Free** active and no payment method; recheck its plan and Cron limit at activation. Deploy only this Worker from the reviewed commit after its `wrangler.toml` account ID matches the dedicated ID in `config/cloudflare-account.json`. The Worker starts inert and disables Wrangler usage telemetry. Note that `wrangler secret put` creates a new Worker deployment immediately, so treat each secret change as an activation action.
 
 | Location | Value | Purpose |
 | --- | --- | --- |

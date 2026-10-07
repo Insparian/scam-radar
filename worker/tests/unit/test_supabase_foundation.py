@@ -130,6 +130,74 @@ def test_verifier_passes_all_repository_versions_to_database(
     assert json.loads(supplied["expected_versions"]) == supabase_foundation.migration_versions()
 
 
+def test_migration_preflight_accepts_empty_database_with_exact_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://private")
+    payload = {
+        "applied_versions": supabase_foundation.migration_versions()[:7],
+        "application_data_empty": True,
+        "irrelevant_text_rows": 0,
+    }
+    monkeypatch.setattr(
+        supabase_foundation,
+        "run_psql",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            args=["psql"], returncode=0, stdout=json.dumps(payload) + "\n", stderr=""
+        ),
+    )
+
+    supabase_foundation.preflight_migrations()
+
+    assert "applied=7 expected=22" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"applied_versions": ["20260816000100", "unexpected"]}, "unexpected applied"),
+        ({"application_data_empty": False}, "empty application database"),
+        ({"irrelevant_text_rows": 1}, "exact redaction approval"),
+    ],
+)
+def test_migration_preflight_refuses_unsafe_state(
+    monkeypatch: pytest.MonkeyPatch,
+    overrides: dict[str, object],
+    message: str,
+) -> None:
+    monkeypatch.setenv("SUPABASE_DB_URL", "postgresql://private")
+    payload: dict[str, object] = {
+        "applied_versions": supabase_foundation.migration_versions()[:7],
+        "application_data_empty": True,
+        "irrelevant_text_rows": 0,
+        **overrides,
+    }
+    monkeypatch.setattr(
+        supabase_foundation,
+        "run_psql",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            args=["psql"], returncode=0, stdout=json.dumps(payload) + "\n", stderr=""
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match=message):
+        supabase_foundation.preflight_migrations()
+
+
+def test_production_workflow_preflights_before_any_migration_push() -> None:
+    workflow = (
+        Path(__file__).parents[3] / ".github" / "workflows" / "migrate-production.yml"
+    ).read_text(encoding="utf-8")
+
+    preflight = workflow.index("python scripts/supabase_foundation.py preflight")
+    dry_run = workflow.index("db push --db-url", preflight)
+    apply = workflow.index("db push --db-url", dry_run + 1)
+
+    assert preflight < dry_run < apply
+    assert workflow.index('test "$CONFIRMATION" = "APPLY FORWARD MIGRATIONS"') < preflight
+
+
 def test_service_role_lockdown_is_forward_only() -> None:
     migration = (
         Path(__file__).parents[3]
