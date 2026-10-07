@@ -1,5 +1,9 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 专用账户审核站 Access 前置核对
+
+- 新账户 Workers & Pages 页显示 `Set up Zero Trust before requiring Access sign-in`；进入设置入口只读查看，提供 `Zero Trust Free $0 / seat / month`、50 seat 上限，旁边有付费 Standard。未选套餐、未接受条款、未创建 Zero Trust 组织或 Access 策略。审核站部署前还须在专用账户开通 Free 并验证未登录访问被拦截；不能沿用旧共享账户的 Access 保护。
+
 ## 2026-10-07 Pages 空项目创建入口只读核对
 
 - 在专用 `Scam Radar` Cloudflare 账户（ID 与版本化配置一致）查看 Workers & Pages：显示 `No projects found`。Direct Upload 界面允许先填项目名、单独点击 `Create project`，上传资产是下一步；因此可以只建空项目。拟用公开项目名 `insparian-scam-radar-public` 和审核项目名 `insparian-scam-radar-private-reviewer` 均经表单可用性检查，界面分别预告同名 `.pages.dev` 域名。未点击创建、未上传、未部署，也未进入旧共享账户。
