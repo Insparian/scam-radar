@@ -1,6 +1,6 @@
 # Scam Radar V0.1 data flow
 
-**Current state:** Application data remains fixture/local only. The empty Frankfurt Supabase foundation has all seven forward migrations, including the append-only evidence-resolution ledger. The F4 browser configuration is deployed only to a dedicated Cloudflare Access-protected reviewer preview. Unauthenticated blocking, account-member Access, Supabase reviewer login, empty-queue bootstrap, sign-out, and the logged-out route guard are verified end to end. The public fixture preview is unchanged and unconnected to Supabase. Real evidence movement and every other live-data path remain disabled until separately approved.
+**Current state:** Application data remains fixture/local only. The Frankfurt Supabase project is Healthy but has only the first 7 of 22 repository migrations; no production business writes are approved. Existing public and Access-protected reviewer previews are in a shared Cloudflare account. Decision 015 proposes a dedicated Free account; its reviewed ID is still unset, so new Cloudflare writes fail closed. Real evidence movement and every other live-data path remain disabled until separately approved.
 
 ## Trust zones
 
@@ -17,9 +17,9 @@ flowchart TB
       B["Secret-free static build"]
     end
     subgraph E["External processors — after activation"]
-      G["Gemini"]
+      G["Alibaba Bailian Qwen — Beijing"]
       C["Cloudflare Pages"]
-      O["Private R2 backup bucket"]
+      O["Dedicated Cloudflare Workers KV Free"]
     end
     subgraph D["Private data plane"]
       DB["Supabase + Auth + policy/human RPCs"]
@@ -46,15 +46,16 @@ Source text is data, never instructions. External content cannot change prompt, 
 |---|---|---|---|---|---|
 | F0 | Developer/CI → official npm/PyPI/container registries | Package names, versions, runner IP/timing | Approved bootstrap | Allowed | Pinned direct versions and committed locks; no application data |
 | F1 | Actions runner → allowlisted public source | URL, reviewed request headers, runner IP/timing | Discover/fetch public pages | Disabled until activation | Source Registry, terms/robots review, per-host delay, timeout/retry/caps, kill switch |
-| F2 | Runner → Gemini/Google | Prompt metadata plus bounded cleaned public-source text | Relevance, extraction, comparison proposal | Disabled until activation | PII redaction, no notes/secrets, char/call caps, provider switch, schema + semantic validation |
+| F2 | Runner → Alibaba Bailian, Beijing | Prompt metadata plus bounded cleaned public-source text | Relevance, extraction, comparison proposal | Disabled until activation | PII redaction, no notes/secrets, char/call caps, free-quota-only hard stop, schema + semantic validation |
 | F3 | Runner → Supabase | Source metadata/text, hashes, AI artifacts, evidence proposals, scores, policy decisions, exception/run state | Durable private state | Empty production schema provisioned; application writes disabled | Secret scoped to step, typed storage adapter, append-only decisions, TLS live, no body in logs |
 | F4 | Reviewer browser → Supabase | Publishable key, login credentials/session metadata, narrow queue payload, evidence choices, exception action and decision note | Human exception decision or V0.1 shadow confirmation | Sixth migration and protected preview active; login/empty queue/sign-out/route guard verified; no real review rows | Cloudflare account-member Access, Supabase Auth, RPC-only browser data access, enabled admin row, row version, transactional RPC, distinct human audit, unconfigured build fails closed |
 | F5 | Exporter → Supabase | Exact `release_id` request | Read immutable published manifest | Local only | Secret-bearing step; verified-revision/release checks; no mutable “latest” query |
 | F6 | Runner → Cloudflare Pages | Hashed compiled static directory | Preview/production publication | Fixture preview active; separate reviewer branch preview active behind Access; live-data public production disabled | Manual deploy switch, protected Pages-only token, Access pre/post probes, no backend secret |
 | F7 | Public browser → Cloudflare | Page/asset/search-index paths and ordinary network metadata | Serve public database | Fixture preview active at `preview.insparian-scam-radar.pages.dev`; no custom DNS | One immutable fixture release, visible test-data warning, `noindex`, no analytics/telemetry |
 | F8 | Public browser local memory/CPU | User's search string and downloaded index | Exact/alias/keyword search | Fixture site only | Query never transmitted, logged, or retained by application |
-| F9 | Supabase → trusted runner → private Cloudflare R2 | Transient private logical dump, then encrypted ciphertext plus integrity metadata | Off-site recovery for Supabase Free | Disabled until activation | Read-only export credential; encrypt before upload; offline recovery identity; private bucket; no GitHub artifact; restore rehearsal |
+| F9 | Supabase → protected GitHub runner → dedicated Cloudflare Workers KV API | Transient private logical dump, then age ciphertext chunks and integrity metadata | Off-site recovery for Supabase Free | Offline code only; no account, namespace, token, or real upload | Encrypt before upload; 16 MiB immutable chunks; 64 MiB backup cap; dedicated-account guard; no GitHub artifact; independent restore, retention, and usage gates pending |
 | F10 | Cloudflare Workers Free Cron → GitHub Actions API | Fixed repository/workflow/ref, one reviewed source key, `dry_run=false`, scoped Actions token, request metadata | Trigger bounded collection independently of GitHub's inactive-repository schedule | Offline code only; no Worker or token deployed | Disabled without exact Worker switch; fixed HTTPS endpoint, no redirects, source-key validation, independent GitHub activation/source checks |
+| F11 | Dedicated Cloudflare Workers Free Cron → GitHub Actions API | Fixed backup workflow/ref, `scheduled=true`, scoped Actions token, request metadata | Trigger encrypted backup independently of GitHub's inactive-repository schedule | Offline code only; no Worker or token deployed | Disabled without exact Worker switch; fixed HTTPS endpoint; GitHub backup/activation/environment gates remain independent |
 
 There is no source → browser path. Public copy is an original verified Scam Radar revision, not stored source HTML or an AI response.
 
@@ -83,7 +84,7 @@ registry source
 For each new source-item version:
 
 1. Compute a relevance input hash from content and behavior versions.
-2. Reuse an identical successful artifact or request a provider result (recorded offline; Gemini only after activation).
+2. Reuse an identical successful artifact or request a provider result (recorded offline; Beijing Qwen only after activation).
 3. Validate JSON shape and domain values; one malformed retry is allowed live.
 4. If relevant, extract fields with supporting spans; missing evidence stays `unknown`/`null`.
 5. Retrieve at most configured `K` candidate pattern revisions deterministically.
@@ -166,8 +167,8 @@ Evidence may be rechecked after a revision decision, so evidence freshness is no
 | Public verified | Canonical pattern copy, evidence label/links, conservative last-verified date, release published-at, pinned Heat | Immutable release JSON and static assets | Indefinite versioned releases unless a reviewed retention decision changes this |
 | Private source/evidence | Bounded relevant clean text, source metadata, spans, claim mappings | Supabase only | Preserve for traceability/recheck; never put in public artifact |
 | Private decision | Drafts, notes, queue payloads, admin identities, policy decisions, human audit events | Supabase only | Policy/human audit append-only; corrections add events/revisions |
-| Restricted credentials | Supabase secret, Gemini key, Cloudflare token, DB password | Local ignored env or scoped GitHub secret | Never committed/logged; rotate on suspected exposure |
-| Encrypted recovery | Encrypted logical database exports and minimal integrity manifests | Private R2 bucket after activation | Retention/lifecycle policy must be approved at activation; never publicly accessible |
+| Restricted credentials | Supabase secret, Bailian key, Cloudflare token, DB password | Local ignored env or scoped GitHub secret | Never committed/logged; rotate on suspected exposure |
+| Encrypted recovery | Encrypted logical database exports and minimal integrity manifests | Dedicated private Workers KV namespace after activation | Retention/lifecycle policy must be approved at activation; never publicly accessible |
 | Transient untrusted | Raw HTML/bytes and arbitrary response headers | Runner memory/temporary file only | Delete immediately after bounded normalization; never upload as artifact |
 | Disposable build/test | Fixture run output and release staging | Namespaced `work/` | Re-creatable and ignored; safe cleanup only within the namespace |
 | Prohibited | Victim PII, raw production dumps, malicious binaries, analytics identifiers | Nowhere | Do not collect or retain |
@@ -177,7 +178,7 @@ All database timestamps are UTC. Only the UI localizes them. Logs use IDs, hashe
 ## Failure and degraded behavior
 
 - Source failure records a source result and leaves its cursor uncommitted; other sources can succeed.
-- Gemini quota/failure leaves work `pending_ai`; prior public content remains unchanged.
+- Bailian free quota exhaustion or model failure leaves work `pending_ai`; prior public content remains unchanged.
 - Evidence correction/withdrawal blocks automation and creates a `gate_regression` exception item; it never silently edits verified history.
 - Database/lease/schema failure stops the run closed.
 - Build/preview failure leaves production unchanged.

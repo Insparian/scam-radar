@@ -2,6 +2,8 @@
 
 Decision [014](../../DECISIONS/014-free-cloudflare-scheduler.md) moves the collection clock to Cloudflare Workers Free. The Worker only dispatches the existing GitHub `collect.yml`; it does not fetch sources, call a model, read Supabase, or publish. GitHub retains the one-source and activation gates. This runbook does not authorize deployment or live collection.
 
+Decision [015](../../DECISIONS/015-isolated-cloudflare-free-account.md) additionally requires this Worker in the new dedicated Cloudflare Free account. The backup clock is a different Worker described in [KV backup](kv-backup.md). The existing shared account is not a deployment target.
+
 ## Offline contract
 
 - Source/config/tests: `cloudflare/scheduler/src/`, `wrangler.toml`, and `test/`.

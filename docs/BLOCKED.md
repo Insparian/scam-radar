@@ -1,9 +1,16 @@
 # 离线验收阻塞与外部关卡
 
+## 2026-10-07 Decision 015：Cloudflare 隔离账户与 KV 备份
+
+- Rui 回复 `proceed`，批准离线方案：同一登录下为 Scam Radar 单独使用 Cloudflare Free 账户；现有共享账户其他 Workers/KV 不碰。账户尚未创建，`config/cloudflare-account.json` 中 ID 为空，Pages 与 KV 写流程现在会主动拒绝。现有预览仍在共享账户，尚未迁移或检查线上站点。
+- 新 KV 备份协议只在本地合成数据验证；真实路径将是 Supabase → 受保护的 GitHub runner → 加密 → 独立账户 Workers KV。备份 Worker 只负责唤醒 GitHub，不持有数据库或 KV 密钥。没有创建 Worker/KV、读生产数据或上传。
+- **上线仍阻塞：** 需另行批准创建 Free 账户/资源与预览迁移；审核并固定新账户 ID、确认费用为 Free；实测真实密文体积不超过 64 MiB、确定不超过 1 GB 的保留/删除策略、恢复密钥保管、独立数据库完整恢复及备份缺席/容量告警。当前没有自动删除，长期每日备份会耗尽容量。既有共享账户的 Secrets 不能沿用。
+- 真实来源、模型、生产迁移、发布、DNS、大陆访问与 7 天稳定性关卡仍开放。下文 R2 是历史候选，现行计划见 [KV 备份](runbooks/kv-backup.md) 与 [账户分工](runbooks/dedicated-cloudflare-account.md)。
+
 ## 2026-10-07 只读核查后具体阻塞
 
 - 自动监测不能只依赖 GitHub Actions 的定时触发：公开仓库连续 60 天无活动会自动停用计划工作流。Rui 已用 `proceed` 批准 Decision 014 的离线设计：Cloudflare Workers Free Cron → 单来源 GitHub `workflow_dispatch`；本地代码移除 GitHub schedule，Worker 默认关闭。尚未创建 Worker、配置令牌、触发真实任务或验证远端状态；也没有独立的缺席告警，不能宣称长期持续监测已经验收。启用 F10 与真实采集仍需单独最终批准。
-- Rui 最新限定只开真正免费的 Cloudflare 服务，不开通其他服务。现有 Pages Free 项目可沿用；R2 开通须接受按量计费，故不启用。Supabase Free 又不含项目定时备份，当前设计没有已批准的真实离站备份目的地；真实数据写入与恢复关卡继续阻塞，不能降低备份门槛来宣称上线。
+- 历史判断：Rui 限定只开真正免费的 Cloudflare 服务；当时考虑沿用现有 Pages。Decision 015 已改为独立 Free 账户。R2 开通须接受按量计费，故不启用。Supabase Free 不含项目定时备份；KV 虽有离线实现，尚无批准的真实保留/恢复方案，真实数据写入与恢复关卡继续阻塞。
 - 已核对现有 GitHub Actions artifact 作为免费备份候选：公开仓库的登录读者可下载 artifact，GitHub Free 的 artifact/Packages 共享存储额度为 500 MB，公开仓库 artifact 最长保留 90 天，超额可能计费或在硬预算下停止。它既不是已批准的私有 R2 目的地，也不能在当前约束下保证备份持续成功；未上传任何生产数据。
 - Cloudflare 免费全球网络不提供中国境内节点保障；中国网络需 Enterprise 加独立订阅和 ICP 备案。`scamradar.insparian.com` 还没有正式部署/DNS，不能声称大陆可用。先做三网、iOS/Android、微信实测；若大陆稳定性不达标，阿里云内地部署又涉及付费与备案，当前约束下暂不启动。
 - Rui 单独授权恢复后，现有 Frankfurt Supabase `scam-radar` Free 项目已显示 Healthy。线上迁移只到 `20260917000100_evidence_resolution_events`（7 个），仓库现有 22 个，后续 15 个仍未应用。恢复项目不等于授权生产迁移或业务读写；执行前须有可验证备份/回退方案、逐项迁移审阅及既有精确确认。

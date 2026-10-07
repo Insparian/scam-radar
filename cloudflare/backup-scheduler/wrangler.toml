@@ -1,0 +1,9 @@
+name = "insparian-scam-radar-backup-scheduler"
+main = "src/index.mjs"
+compatibility_date = "2026-10-07"
+workers_dev = false
+send_metrics = false
+
+# 02:43 UTC daily. This Worker holds only a repository-scoped Actions token.
+[triggers]
+crons = ["43 2 * * *"]

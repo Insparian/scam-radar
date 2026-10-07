@@ -53,6 +53,7 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$CLOUDFLARE_API_TOKEN"
+          python scripts/cloudflare_account_guard.py --account-id "$CLOUDFLARE_ACCOUNT_ID"
           endpoint="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$REVIEWER_PROJECT"
           response="$RUNNER_TEMP/reviewer-project.json"
           status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
@@ -174,6 +175,7 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$CLOUDFLARE_API_TOKEN"
+          python scripts/cloudflare_account_guard.py --account-id "$CLOUDFLARE_ACCOUNT_ID"
           npx --yes wrangler@4.130.0 pages deploy web/out \
             --project-name="$REVIEWER_PROJECT" \
             --branch="$REVIEWER_BRANCH" \

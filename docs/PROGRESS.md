@@ -1,5 +1,13 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 Decision 015 离线推进
+
+- Rui 对独立 Cloudflare Free 账户方案回复 `proceed`。已记录 `DECISIONS/015`；未创建账户、迁移 Pages、部署 Worker、上传备份或改 DNS。
+- 新增版本化专用账户 ID 检查。ID 尚未审核填写，因此现有 Cloudflare Pages 工作流和未来 KV 上传均拒绝写入；保护共享账户其他项目。新建独立备份 Cron Worker 离线代码，移除备份工作流 GitHub schedule，改由默认关闭的 Worker dispatch。现有采集 Cron 仍默认关闭。
+- 新增 Cloudflare KV 密文分块上传/读回验证适配器：每块 16 MiB，整份上限 64 MiB，先验本地 SHA-256，写后回读，manifest 最后写；不自动删除。旧 R2 本地恢复测试保留，真实工作流改指 KV。新增本地协议与账户隔离测试。
+- 本地 `make check`、`make test`、`make eval`、`make demo`、`make collect-dry-run` 通过：148 Python、9 个调度器 Node、9 个浏览器、100 recorded、100 个静态文件；15 来源仍关闭，`launch_qualified=false`。固定 Wrangler 4.130.0 对备份 Worker `deploy --dry-run` 成功，1.46 KiB、无绑定、无部署。首次离线 npx 缓存入口缺包失败，随后直接调用本机已缓存的同版本 Wrangler 通过；没有使用在线安装。
+- 数据去向、停机开关及尚未满足的容量/保留/独立恢复门槛见 [KV runbook](runbooks/kv-backup.md)、[账户 runbook](runbooks/dedicated-cloudflare-account.md) 和 `docs/BLOCKED.md` 顶部。
+
 ## 2026-10-07 自动监测调度可靠性核查
 
 - 本地 `collect.yml` 设有每天 3 次北京时间计划运行，并保留外部激活开关。[GitHub 官方规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)确认 timezone 语法有效，但公开仓库 60 天无活动会自动停用计划工作流，且高负载时计划运行可能延迟或丢弃。当前没有独立检测“本应运行却完全没有运行”的心跳，因此不能把 cron 文件存在当作长期自动监测已验收。
