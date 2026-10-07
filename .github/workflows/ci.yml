@@ -60,7 +60,7 @@ jobs:
             echo "## Scam Radar offline CI"
             echo ""
             echo "- External collection: disabled"
-            echo "- Gemini: disabled"
+            echo "- Live AI: disabled"
             echo "- Production database: not contacted"
             echo "- Deployment: disabled"
             echo "- Fixture release: fixture-2026-08-16-001"
@@ -79,6 +79,15 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Use Python 3.13
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.13"
+      - name: Install locked database test dependencies
+        run: |
+          python -m pip install uv==0.12.5
+          uv sync --project worker --locked --extra dev
+          npm ci --prefix web
       - name: Rebuild local Supabase from zero
         run: npx --yes supabase@2.115.0 start
       - name: Lint the live local database
