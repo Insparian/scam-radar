@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import secrets
+import shutil
 import signal
 import socket
 import subprocess
@@ -31,11 +32,12 @@ from scam_radar.storage.public_export import map_database_release
 from scam_radar.storage.rpc import RpcStore
 
 ROOT = Path(__file__).resolve().parents[3]
-DOCKER = os.getenv(
-    "DOCKER_BIN",
-    "/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin/docker",
+DOCKER = (
+    os.getenv("DOCKER_BIN")
+    or shutil.which("docker")
+    or "/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin/docker"
 )
-DB_CONTAINER = os.getenv("SUPABASE_DB_CONTAINER", "supabase_db_scam-radar-readiness")
+DB_CONTAINER = os.getenv("SUPABASE_DB_CONTAINER", "supabase_db_scam-radar-offline")
 LOCAL_PROJECT = DB_CONTAINER.removeprefix("supabase_db_")
 LOCAL_API = os.getenv("SCAM_RADAR_LOCAL_API_URL", "http://127.0.0.1:54321")
 
