@@ -26,14 +26,33 @@ jobs:
     timeout-minutes: 30
     environment:
       name: cloudflare-preview
-      url: https://preview.insparian-scam-radar.pages.dev
+      url: ${{ vars.SCAM_RADAR_PUBLIC_PREVIEW_URL }}
     env:
+      PAGES_PROJECT: ${{ vars.SCAM_RADAR_PUBLIC_PAGES_PROJECT }}
+      PREVIEW_URL: ${{ vars.SCAM_RADAR_PUBLIC_PREVIEW_URL }}
       SCAM_RADAR_ENV: preview
       SCAM_RADAR_COLLECT_ENABLED: "false"
       SCAM_RADAR_AI_ENABLED: "false"
       SCAM_RADAR_DEPLOY_ENABLED: "true"
       NEXT_PUBLIC_RELEASE_ID: fixture-2026-08-16-001
     steps:
+      - name: Require the reviewed dedicated Pages target
+        run: |
+          [[ "$PAGES_PROJECT" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || {
+            echo "Dedicated public Pages project is missing or invalid."
+            exit 1
+          }
+          [[ "$PREVIEW_URL" =~ ^https://preview\.[a-z0-9]+(-[a-z0-9]+)*\.pages\.dev$ ]] || {
+            echo "Dedicated public Pages preview URL is missing or invalid."
+            exit 1
+          }
+          preview_subdomain="${PREVIEW_URL#https://preview.}"
+          preview_subdomain="${preview_subdomain%.pages.dev}"
+          [[ "$preview_subdomain" == "$PAGES_PROJECT"* ]] && \
+            [ "$PREVIEW_URL" != "https://preview.insparian-scam-radar.pages.dev" ] || {
+            echo "Public preview URL does not match the dedicated Pages target."
+            exit 1
+          }
       - name: Check out immutable source
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -81,7 +100,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           python scripts/cloudflare_account_guard.py --account-id "$CLOUDFLARE_ACCOUNT_ID"
           npx --yes wrangler@4.130.0 pages deploy web/out \
-            --project-name=insparian-scam-radar \
+            --project-name="$PAGES_PROJECT" \
             --branch=preview \
             --commit-hash="$GITHUB_SHA" \
             --commit-dirty=false
@@ -90,5 +109,5 @@ jobs:
           SCAM_RADAR_ALLOW_PRODUCTION_SMOKE: "true"
         run: |
           python scripts/production_smoke.py \
-            --base-url=https://preview.insparian-scam-radar.pages.dev \
+            --base-url="$PREVIEW_URL" \
             --release-id="$NEXT_PUBLIC_RELEASE_ID"

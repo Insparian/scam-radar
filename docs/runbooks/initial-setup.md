@@ -40,7 +40,8 @@ keep its activation switches off until Rui approves that live path.
 | Stage and GitHub location | Variables | Encrypted secrets |
 | --- | --- | --- |
 | Production database foundation — `supabase-production` environment | None | `SUPABASE_DB_URL`, `SUPABASE_REVIEWER_EMAIL` |
-| Protected reviewer — `cloudflare-preview` environment | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `REVIEWER_ACCESS_READY` after Access verification | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
+| Public fixture preview — `cloudflare-preview` environment | `SCAM_RADAR_PUBLIC_PAGES_PROJECT`, `SCAM_RADAR_PUBLIC_PREVIEW_URL` from the dedicated account's actual Pages project and branch alias | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
+| Protected reviewer — `cloudflare-preview` environment | `SCAM_RADAR_REVIEWER_PAGES_PROJECT`, `SCAM_RADAR_REVIEWER_PREVIEW_URL` from the dedicated account's actual Pages project and branch alias; `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `REVIEWER_ACCESS_READY` after Access verification | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
 | One-source collection — repository level | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_APPROVED_SOURCE_KEY` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `SCAM_RADAR_MODEL_API_KEY` |
 | Encrypted backup — `production-backup` environment | `SCAM_RADAR_AGE_RECIPIENT`, `SCAM_RADAR_BACKUP_PGHOST`, `SCAM_RADAR_BACKUP_PGUSER`, `SCAM_RADAR_KV_ACCOUNT_ID`, `SCAM_RADAR_KV_NAMESPACE_ID` | `SCAM_RADAR_BACKUP_PGPASSWORD`, `SCAM_RADAR_SUPABASE_CA_PEM`, `SCAM_RADAR_KV_TOKEN` |
 | Immutable public release — `production` environment | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_PAGES_PROJECT`, `SCAM_RADAR_PAGES_PRODUCTION_BRANCH` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_TOKEN` |
@@ -54,6 +55,15 @@ unset or `false` until the corresponding activation is approved. The backup and
 deployment workflows also require their own exact confirmation values after
 approval. Do not fill an unapproved KV namespace or publishable key with an invented
 value.
+
+Choose the reviewer project name before the separately approved empty-project
+creation; then verify its name and actual `pages.dev` subdomain in Cloudflare.
+The public project name likewise must be verified after its approved creation.
+A taken name may receive a different subdomain. Set the full branch aliases
+(for example, `https://preview.<actual-subdomain>.pages.dev`) in
+`cloudflare-preview`; the workflows reject the shared account's old preview
+URLs. Do not run either preview deployment until its target and, for the reviewer,
+Access policy are reviewed.
 
 ## Real local database contract — optional
 

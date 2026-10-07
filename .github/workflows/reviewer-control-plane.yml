@@ -26,9 +26,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REVIEWER_PROJECT: insparian-scam-radar-reviewer
   REVIEWER_BRANCH: reviewer
-  REVIEWER_URL: https://reviewer.insparian-scam-radar-reviewer.pages.dev
 
 jobs:
   provision-empty-project:
@@ -37,6 +35,8 @@ jobs:
     timeout-minutes: 10
     environment:
       name: cloudflare-preview
+    env:
+      REVIEWER_PROJECT: ${{ vars.SCAM_RADAR_REVIEWER_PAGES_PROJECT }}
     steps:
       - name: Require exact human confirmation
         env:
@@ -44,6 +44,10 @@ jobs:
         run: |
           test "$CONFIRMATION" = "PROVISION REVIEWER PROJECT" || {
             echo "Confirmation did not match. Cloudflare was unchanged."
+            exit 1
+          }
+          [[ "$REVIEWER_PROJECT" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || {
+            echo "Dedicated reviewer Pages project is missing or invalid."
             exit 1
           }
       - name: Create the empty Direct Upload project if absent
@@ -94,8 +98,10 @@ jobs:
     timeout-minutes: 30
     environment:
       name: cloudflare-preview
-      url: https://reviewer.insparian-scam-radar-reviewer.pages.dev
+      url: ${{ vars.SCAM_RADAR_REVIEWER_PREVIEW_URL }}
     env:
+      REVIEWER_PROJECT: ${{ vars.SCAM_RADAR_REVIEWER_PAGES_PROJECT }}
+      REVIEWER_URL: ${{ vars.SCAM_RADAR_REVIEWER_PREVIEW_URL }}
       SCAM_RADAR_ENV: reviewer
       SCAM_RADAR_COLLECT_ENABLED: "false"
       SCAM_RADAR_AI_ENABLED: "false"
@@ -109,6 +115,21 @@ jobs:
         run: |
           test "$CONFIRMATION" = "DEPLOY PROTECTED REVIEWER" || {
             echo "Confirmation did not match. Nothing was deployed."
+            exit 1
+          }
+          [[ "$REVIEWER_PROJECT" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || {
+            echo "Dedicated reviewer Pages project is missing or invalid."
+            exit 1
+          }
+          [[ "$REVIEWER_URL" =~ ^https://reviewer\.[a-z0-9]+(-[a-z0-9]+)*\.pages\.dev$ ]] || {
+            echo "Dedicated reviewer Pages preview URL is missing or invalid."
+            exit 1
+          }
+          reviewer_subdomain="${REVIEWER_URL#https://reviewer.}"
+          reviewer_subdomain="${reviewer_subdomain%.pages.dev}"
+          [[ "$reviewer_subdomain" == "$REVIEWER_PROJECT"* ]] && \
+            [ "$REVIEWER_URL" != "https://reviewer.insparian-scam-radar-reviewer.pages.dev" ] || {
+            echo "Reviewer preview URL does not match the dedicated Pages target."
             exit 1
           }
       - name: Require the reviewed Access gate
