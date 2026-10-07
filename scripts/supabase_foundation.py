@@ -34,6 +34,33 @@ select count(*)
 from upserted_reviewer;
 """
 
+PREFLIGHT_QUERY = """
+select json_build_object(
+    'applied_versions', (
+        select coalesce(json_agg(version::text order by version), '[]'::json)
+        from supabase_migrations.schema_migrations
+    ),
+    'application_data_empty', not exists (
+        select 1 from public.source_items
+        union all select 1 from public.ai_artifacts
+        union all select 1 from public.scam_patterns
+        union all select 1 from public.pattern_evidence
+        union all select 1 from public.policy_decisions
+        union all select 1 from public.public_releases
+        union all select 1 from public.review_items
+        union all select 1 from public.pipeline_runs
+        union all select 1 from public.source_states
+        union all select 1 from public.source_run_results
+        union all select 1 from public.review_events
+        union all select 1 from public.operation_leases
+    ),
+    'irrelevant_text_rows', (
+        select count(*) from public.source_item_versions
+        where processing_status = 'irrelevant' and clean_text is not null
+    )
+)::text;
+"""
+
 FOUNDATION_QUERY = """
 select json_build_object(
     'migrations_ok', (
@@ -211,6 +238,39 @@ def parse_single_json_row(
     return payload
 
 
+def preflight_migrations() -> None:
+    db_url = required_env("SUPABASE_DB_URL")
+    payload = parse_single_json_row(run_psql(db_url, PREFLIGHT_QUERY))
+    versions = payload.get("applied_versions")
+    expected = migration_versions()
+    if (
+        not isinstance(versions, list)
+        or not all(isinstance(version, str) for version in versions)
+        or versions != expected[: len(versions)]
+    ):
+        raise RuntimeError(
+            "production migration preflight found unexpected applied versions"
+        )
+    if not isinstance(payload.get("irrelevant_text_rows"), int) or isinstance(
+        payload["irrelevant_text_rows"], bool
+    ):
+        raise TypeError("production migration preflight returned invalid row count")
+    if payload["irrelevant_text_rows"] != 0:
+        raise RuntimeError(
+            "production migration preflight found existing irrelevant text; "
+            "separate verified backup and exact redaction approval are required"
+        )
+    if payload.get("application_data_empty") is not True:
+        raise RuntimeError(
+            "production migration preflight requires an empty application database"
+        )
+    print(
+        "production migration preflight ok: "
+        f"applied={len(versions)} expected={len(expected)} "
+        "application_data=empty irrelevant_text_rows=0"
+    )
+
+
 def verify_foundation() -> None:
     db_url = required_env("SUPABASE_DB_URL")
     expected_versions = migration_versions()
@@ -303,13 +363,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Bootstrap and verify the approved empty production Supabase foundation."
     )
-    parser.add_argument("command", choices=("bootstrap-reviewer", "verify"))
+    parser.add_argument(
+        "command", choices=("preflight", "bootstrap-reviewer", "verify")
+    )
     args = parser.parse_args()
     if os.getenv("SCAM_RADAR_ALLOW_PRODUCTION_SUPABASE") != "true":
         raise RuntimeError(
             "production Supabase is disabled; use only the protected approved workflow"
         )
-    if args.command == "bootstrap-reviewer":
+    if args.command == "preflight":
+        preflight_migrations()
+    elif args.command == "bootstrap-reviewer":
         bootstrap_reviewer()
     else:
         verify_foundation()

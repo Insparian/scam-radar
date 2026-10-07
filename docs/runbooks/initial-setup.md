@@ -116,11 +116,21 @@ Only after approval:
    repository file. As of 2026-10-07 the project has only the first 7 of 22 migrations;
    the evidence-resolution event migration is already applied. Before running the
    foundation workflow, compare exact production and repository migration versions.
+   The workflow's read-only preflight checks the applied versions form the exact
+   repository prefix and that application tables are empty. It also counts old
+   irrelevant rows with retained text. These results travel from Supabase to a
+   GitHub Actions job using the `supabase-production` environment; the log prints
+   only zero or a failure reason, never row
+   contents. This new preflight data flow remains dormant until Rui separately
+   approves the production foundation workflow.
    Migration `20260920000600_irrelevant_text_retention.sql` clears old `clean_text`
-   wherever `processing_status = 'irrelevant'`. First read-only count affected rows,
-   verify a backup in a separate recovery database, and obtain Rui's separate exact
-   confirmation for this irreversible data change. No real backup destination is
-   approved under the current free-only constraint, so this step remains blocked.
+   wherever `processing_status = 'irrelevant'`. If any application data or retained
+   irrelevant text exists, this foundation workflow stops before `db push` even with
+   its normal confirmation. A separately reviewed migration plan must first inspect
+   the affected count, verify a backup in a separate recovery database, and obtain
+   Rui's exact confirmation for the irreversible data change. No real backup
+   destination is approved under the current free-only constraint, so this step
+   remains blocked.
 4. Prove anon/reviewer/worker/exporter boundaries, append-only policy decisions, distinct policy/human provenance, shadow-decision rejection, and an empty exact-policy activation allowlist with production-safe checks.
 5. Confirm the existing database v2 public-export mapping still covers every required public-web presentation field on the exact approved release; do not activate a build that still depends on fixture-only copy.
 6. Keep collection, AI, backup, and deploy kill switches off.

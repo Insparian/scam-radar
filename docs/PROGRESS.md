@@ -1,5 +1,26 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 生产迁移前检查补强
+
+- 未提交的 Supabase 迁移前只读检查原先只覆盖主要内容表，可能漏掉独立存在的审核项、流水线运行、来源状态/结果、审核事件或租约。现已把这些运行表纳入“空业务数据”判定；非空库在任何 `db push` 前停止。
+- 用现有合成本地 PostgreSQL 实际执行相同 SQL：返回 16 个已应用版本、`application_data_empty=false`，无 SQL 错误；只输出计数和布尔值，未连接生产库。此检查的 Supabase→受保护 GitHub runner 汇总数据流仍未启用，需单独激活批准。
+- `make check`、`make test` 通过（146 Python、6 个采集调度器测试、9 个浏览器测试）；静态产物秘密扫描通过。没有运行生产迁移或外部请求。
+
+## 2026-10-07 Cloudflare 账户隔离待决策
+
+- Rui 指出当前 Cloudflare 账户中有其他项目 Workers，要求明确各账户职责并避免影响其运行。只读控制台证据显示现有共享账户确有其他项目 Workers 与两个 KV 命名空间；未查看这些命名空间的内容或修改资源。[官方账户说明](https://developers.cloudflare.com/fundamentals/account/create-account/)允许符合资格的现有用户在同一登录下创建额外 Free 账户；[KV 限额](https://developers.cloudflare.com/kv/platform/limits/)和[Workers 限额](https://developers.cloudflare.com/workers/platform/limits/)按账户共享，[KV API 权限](https://developers.cloudflare.com/fundamentals/api/reference/permissions/)属账户级。Rui 随后对独立 Free 账户的 Decision 015 回复 `proceed`；离线实现已在本地 `codex/isolated-cloudflare-backup` 分支提交，尚未推送。未建账户、迁移 Pages、部署 Worker 或写 KV。
+- 同一登录下的 Cloudflare 账户切换菜单已只读显示 `Create Account` 入口；现有账户的当前成员权限详情显示 `Super Administrator - All Privileges`。这满足官方“现有账户 Super Administrator”条件，但未核查登录账户的七天年龄或最终创建页，因此不能宣称创建资格全部验证。未点击创建入口、提交表单或变更权限。
+
+## 2026-10-07 本地填写项复核
+
+- 只读解析忽略的 `.env`，仅输出字段是否非空/关闭，不显示值：百炼评测与 worker key、Supabase 项目 URL、公开 Supabase URL、Cloudflare account ID 已填；六个真实激活开关均为 `false`。生产 service key、数据库 URL、reviewer 邮箱、公开 publishable key、Cloudflare API/Pages token 仍空。R2 已排除在当前免费方案外，不要求填写其 bucket/访问 key。`.env` 不会自动同步到 GitHub Secrets/Variables 或 Cloudflare Worker secrets；这些位置仍须在各自激活关卡配置。未试用任何凭据或连接云端。
+
+## 2026-10-07 免费备份替代方案调研
+
+- [Cloudflare Workers KV Free 价格](https://developers.cloudflare.com/kv/platform/pricing/)与[限额](https://developers.cloudflare.com/kv/platform/limits/)显示：免费方案含 1 GB 存储、每天 1,000 次写入，超额操作失败；单值最多 25 MiB。[KV 一致性说明](https://developers.cloudflare.com/kv/concepts/how-kv-works/)显示跨地点读取最终一致，不能用覆盖同一 key 的方式提交备份。适合研究“`age` 密文分块、不可变对象名、最后提交清单、异地回读校验”的纯免费候选，仍需真实容量/恢复验证和 Rui 的架构决策；未创建服务或发送数据。
+- 现有 `.github/workflows/backup.yml` 仍有 GitHub 定时触发；公开仓库 60 天无活动自动停用的风险也适用于它。即使更换 R2 存储，仍须另设计可靠调度与缺席告警。`D1` 免费方案有 5 GB 账户存储、单行 2 MB 上限，但为数据库存储而非备份对象接口；暂不作为首选。未改工作流。
+- Rui 先前授权的 Cloudflare 控制台只读核查显示：当前账户 Workers 套餐为 `Free`（`Current plan`），页面列出 Workers KV 免费存储 1 GB、写/删/列举每天 1,000 次、Cron Triggers 每账户 5 个。Workers KV 页面可打开并显示现有命名空间，但没有 Scam Radar 专用命名空间；未点击创建、升级、部署或读取既有命名空间数据。这只证明账户当前套餐和 KV 入口可用，不能替代实际备份容量、权限及独立恢复验收。
+
 ## 2026-10-07 自动监测调度可靠性核查
 
 - 本地 `collect.yml` 设有每天 3 次北京时间计划运行，并保留外部激活开关。[GitHub 官方规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)确认 timezone 语法有效，但公开仓库 60 天无活动会自动停用计划工作流，且高负载时计划运行可能延迟或丢弃。当前没有独立检测“本应运行却完全没有运行”的心跳，因此不能把 cron 文件存在当作长期自动监测已验收。
@@ -19,6 +40,7 @@
 - Rui 明确授权操作后，恢复现有 `scam-radar` Free 项目；控制台显示 Healthy，地区仍为 `eu-central-1`（Frankfurt），项目 URL 为 `https://eswsxqgsdwsovuapvtld.supabase.co`。未读取密钥、业务数据或执行 SQL。
 - 线上迁移清单只有首批 7 个，最新为 `20260917000100_evidence_resolution_events`；仓库有 22 个前向迁移，故 15 个待应用。仅作只读比较，未运行生产迁移。
 - 离线审阅待应用迁移时发现 `20260920000600_irrelevant_text_retention.sql` 顶层会一次性清除已有 `irrelevant` 版本的 `clean_text`，且安装后续清理触发器；其他待应用文件的顶层结构变更和函数替换不等于这项旧数据清理已获批准。已在上线步骤加入受影响行数、独立恢复和精确确认关卡；未查询生产行数、未执行迁移。
+- 生产 foundation 入口原先只在 `db push` 后验证空库，可能先触发上述清理、后才失败。现在在 `db push --dry-run` 之前新增只读预检：已应用迁移必须是仓库精确前缀，业务表必须为空，待清理正文数必须为 0；否则阻断。单元反例覆盖错误版本、非空库和待清理正文。预检仅在未来独立批准的手动 GitHub 工作流运行时，把迁移版本和聚合状态从 Supabase 送至受保护 runner；成功日志仅报告 0 和版本数量。未运行生产工作流或查询生产数据。
 - Free 备份页面明确显示不含项目定时备份。Data API 控制台显示 0/24 张表、0/50 个函数对 API 暴露，自动暴露新对象关闭；这使审核站 RPC 可用性成为待验证项，不能凭本地测试宣称生产可用。未改 API/grants/RLS 配置。
 - 生产迁移、数据库读写、真实来源/模型调用、备份上传、Pages 发布和 DNS 均保持关闭。具体阻塞见 `docs/BLOCKED.md` 顶部。
 - 生产迁移 workflow 的 `scripts/supabase_foundation.py` 原来只查首批 7 个迁移，漏装后续版本仍可能报绿，且成功文案误写 6。已改为从仓库迁移文件读取完整版本集合，要求数据库版本集合精确相等。新增回归测试；在本机合成 PostgreSQL 上实际执行相同 SQL，22 个版本返回 true，故意去掉 1 个期望版本返回 false。`make check`、`make test` 通过（141 Python、9 浏览器）；首次测试因沙箱拒绝 localhost bind 失败，获准本机回环后通过。未连接生产数据库。
