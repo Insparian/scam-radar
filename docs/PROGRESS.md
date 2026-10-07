@@ -4,6 +4,7 @@
 
 - Rui 明确只开 Cloudflare 真正免费的服务，不开通其他服务。现有 Cloudflare Pages Free 项目不需另建；R2 虽有月度免费额度，开通仍接受按量计费，故未启用、未创建桶、未上传。此约束使当前真实密文离站备份/恢复关卡继续阻塞。
 - [Cloudflare 中国网络](https://developers.cloudflare.com/china-network/get-started/)要求 Enterprise 方案、独立订阅及 ICP；Pages Free 不能据此获得境内节点或可用性保证。[阿里云内地托管](https://www.alibabacloud.com/help/en/icp-filing/basic-icp-service/product-overview/icp-filing-requirements-for-a-regular-website)需备案且属于另行付费选项。未检查既有预览站；正式域名尚未发布，须按 `docs/BLOCKED.md` 的三网/设备/微信关卡实测后再决定是否迁移。
+- 只读调研现有 GitHub Actions artifact 备份候选：[GitHub 费用说明](https://docs.github.com/en/billing/concepts/product-billing/github-actions)列出 GitHub Free 共享 artifact 存储 500 MB；[公开仓库下载与保留规则](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)允许登录且有读权限者下载，最长保留 90 天。硬预算可停超额使用，但也会让备份失败。未改架构、未上传；不能用它默默替代私有 R2。
 
 ## 2026-10-07 Supabase 项目恢复与线上配置核查
 
