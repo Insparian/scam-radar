@@ -237,6 +237,80 @@ def reviewer_rpc(key: str, decision: str) -> None:
     )
 
 
+def held_cross_source_conflict(origin: str, calls: dict[str, int], decision: str) -> None:
+    held_key = f"local-held-overlap-{uuid4().hex[:10]}"
+    other_key = f"local-held-other-{uuid4().hex[:10]}"
+    child(held_key, origin, "after_submit")
+    original_ids = receipt_ids(held_key)
+    approved_before = sql_scalar(
+        "select latest_approved_revision_id::text from public.scam_patterns "
+        f"where id='{original_ids[0]}'"
+    )
+    pattern_count = sql_scalar("select count(*) from public.scam_patterns")
+    reviewer_rpc(held_key, "hold")
+    comparisons_before = calls["comparison"]
+    for _ in range(2):
+        competing = child(other_key, origin, "none")
+        state = snapshot(other_key)
+        if (
+            competing is None
+            or competing["counts"].get("pending_review_deferred") != 1
+            or state[1:5] != ("pending_ai", "0", "pending_review_conflict", "<empty>")
+            or state[5:] != ("0", "0", "0", "0")
+            or sql_scalar("select count(*) from public.scam_patterns") != pattern_count
+            or receipt_ids(held_key)[:5] != original_ids[:5]
+            or receipt_ids(held_key)[5] != "needs_evidence"
+        ):
+            raise AssertionError(f"held_cross_source_not_deferred:{competing}:{state}")
+    if calls["comparison"] <= comparisons_before:
+        raise AssertionError("held_approved_pattern_not_compared")
+    if (
+        sql_scalar(
+            "select latest_approved_revision_id::text from public.scam_patterns "
+            f"where id='{original_ids[0]}'"
+        )
+        != approved_before
+    ):
+        raise AssertionError("held_draft_replaced_approved_fact")
+    expire_claim(held_key)
+    if decision == "approve":
+        recovered = child(held_key, origin, "none")
+        if recovered is None or recovered["outcome"] != "success":
+            raise AssertionError("held_policy_recovery_failed")
+        review_pending_update("approve")
+    else:
+        reviewer_rpc(held_key, "reject")
+        recovered = child(held_key, origin, "none")
+        if recovered is None or recovered["outcome"] != "success":
+            raise AssertionError("held_rejected_recovery_failed")
+    resumed = child(other_key, origin, "none")
+    ids = receipt_ids(other_key)
+    state = snapshot(other_key)
+    if (
+        resumed is None
+        or resumed["outcome"] != "success"
+        or state[1] != "processed"
+        or state[4] == "<empty>"
+        or state[5:] != ("1", "1", "1", "1")
+        or ids[0] != original_ids[0]
+        or sql_scalar("select count(*) from public.scam_patterns") != pattern_count
+    ):
+        raise AssertionError(f"held_cross_source_resume_failed:{resumed}:{state}")
+    calls_before = calls["model"]
+    child(other_key, origin, "none")
+    if (
+        snapshot(other_key) != state
+        or receipt_ids(other_key) != ids
+        or calls["model"] != calls_before
+    ):
+        raise AssertionError("held_cross_source_repeat_changed_state")
+    review_pending_update("reject")
+    print(
+        f"GREEN held overlap/{decision}: compared approved fact, "
+        "deferred twice, same pattern resumed"
+    )
+
+
 def main() -> int:
     with protocol_server(existing_update=True) as (origin, calls):
         for fault, pre_review, post_review in (
@@ -456,6 +530,8 @@ def main() -> int:
             raise AssertionError(f"repeated_crash_permanently_stuck:{recovered}:{final_state}")
         review_pending_update("reject")
         print("GREEN three repeated process exits before finish recovered once")
+        for decision in ("approve", "reject"):
+            held_cross_source_conflict(origin, calls, decision)
     return 0
 
 

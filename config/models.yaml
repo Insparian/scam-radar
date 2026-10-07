@@ -1,11 +1,11 @@
 schema_version: 1
 live_enabled: false
-provider: gemini
+provider: qwen
 production_model: null
 recorded_model: recorded-fixture-v1
 embedding_model: null
 embedding_enabled: false
-activation_note: Choose and live-evaluate a currently supported free-tier model before activation.
+activation_note: Rui selected Alibaba Model Studio Beijing Qwen Flash with free-quota-only enabled. Verify remaining quota, expiry and live quality before activation; never use paid or automatic fallback.
 # Dormant evaluation candidates only; selecting one does not grant activation.
 evaluation_candidates:
   glm:
@@ -15,11 +15,12 @@ evaluation_candidates:
     price_verified: false
     official_reference: https://docs.bigmodel.cn/cn/guide/models/text/glm-4.7
   qwen:
-    model: qwen-plus-2025-09-11
+    model: qwen3.8-flash
     protocol: openai
-    endpoint: https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions
-    price_verified: false
-    official_reference: https://www.alibabacloud.com/help/en/model-studio/qwen-plus
+    endpoint: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+    enable_thinking: false
+    price_verified: true
+    official_reference: https://help.aliyun.com/zh/model-studio/model-pricing
   gemini:
     model: gemini-2.5-flash
     protocol: gemini

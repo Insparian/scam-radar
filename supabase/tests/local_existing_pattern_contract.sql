@@ -6,6 +6,8 @@ select set_config('request.jwt.claim.role', 'service_role', true);
 do $$
 declare
     v_source_key text;
+    v_lifecycle text;
+    v_matches jsonb;
     v_pattern public.scam_patterns%rowtype;
     v_base public.pattern_revisions%rowtype;
     v_run uuid;
@@ -91,6 +93,32 @@ begin
         v_version,v_run::text,v_run,v_pattern.id,v_base.id,
         '合成来电索取验证码并要求转账',v_match,v_heat,
         v_payload,array['routine_case_review']);
+    -- Workflow state must not erase still-approved facts or expose draft facts.
+    foreach v_lifecycle in array array['review_ready','evidence_pending','candidate','rejected','archived']
+    loop
+        update public.scam_patterns set lifecycle_status = v_lifecycle where id = v_pattern.id;
+        select candidate into v_matches from jsonb_array_elements(
+            public.list_pattern_match_candidates(v_base.pattern_type,10)) as candidate
+        where candidate->>'pattern_id' = v_pattern.id::text;
+        if v_lifecycle in ('review_ready','evidence_pending') then
+            if v_matches is null or v_matches->>'revision_id' <> v_base.id::text
+               or v_matches->>'summary' <> v_base.one_sentence_summary
+               or v_matches->>'pending_review' <> 'true' then
+                raise exception 'held_approved_fact_not_matchable';
+            end if;
+        elsif v_matches is not null then
+            raise exception 'inactive_pattern_became_matchable';
+        end if;
+    end loop;
+    update public.scam_patterns set lifecycle_status = 'evidence_pending',
+        latest_approved_revision_id = null where id = v_pattern.id;
+    if exists(select 1 from jsonb_array_elements(
+        public.list_pattern_match_candidates(v_base.pattern_type,10)) as candidate
+        where candidate->>'pattern_id' = v_pattern.id::text) then
+        raise exception 'unapproved_held_draft_became_matchable';
+    end if;
+    update public.scam_patterns set lifecycle_status = v_pattern.lifecycle_status,
+        latest_approved_revision_id = v_base.id where id = v_pattern.id;
     v_replay := public.submit_existing_pattern_evidence(
         v_version,v_run::text,v_run,v_pattern.id,v_base.id,
         '合成来电索取验证码并要求转账',v_match,v_heat,

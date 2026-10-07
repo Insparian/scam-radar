@@ -80,20 +80,29 @@
 
 模型目的地分别为智谱 `open.bigmodel.cn`、百炼所选地区的 DashScope/工作区域名、
 Google `generativelanguage.googleapis.com`。确认一个不代表授权另外两个。
-Qwen 地区绑定 key；当前官方兼容文档正文存在 Beijing 示例地区不一致，
-推荐激活时以控制台实际工作区地区和文档迁移说明核对，不照抄错配端点。
+Qwen 地区绑定 key；本轮已确认北京区，使用北京端点，不沿用旧新加坡候选。
 
-## 模型核验记录（2026-09-18）
+## 模型选择与零费用约束（2026-10-06）
+
+Rui 已说明没有 Gemini API 项目，并选择现有百炼北京工作区；确认已开启“仅免费额度／免费额度用完即停”。因此 `config/models.yaml` 的 provider 与 Qwen 候选选择 Qwen Flash；生产模型仍留空且 `live_enabled=false`，真实质量尚未验收，不启用付费或自动跨提供商回退。调用费上限为 **0**，额度用尽应停止并保留待处理任务。
+
+- [官方 Flash 模型页](https://help.aliyun.com/zh/model-studio/qwen3-8-flash)与[价格表](https://help.aliyun.com/zh/model-studio/model-pricing)核验候选 `qwen3.8-flash`。北京区列有 100 万 Token 免费额度、90 天有效期；实际剩余量与到期日仍须看该账户，不能把官方赠送额度当作余额。此为当前版本模型 ID，不使用含糊的“最新”参数；未来换模型需重跑评测。
+- 北京完整请求端点 `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`，与北京 key 配对。[官方兼容接口](https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope)确认旧域名仍可用；未获业务空间 ID 前不猜专属域名。只发送脱敏、获准公开文本、固定 prompt/schema、旧批准模式摘要；不发送审核员备注或原始页面。该数据去向须在真实调用激活时确认。
+- [结构化输出说明](https://help.aliyun.com/zh/model-studio/qwen-structured-output)要求本候选使用非思考模式以稳定输出 JSON；设置 `enable_thinking=false`，该参数纳入阶段缓存指纹，服务端返回结果仍经本地 schema 和证据校验。prompt 不变，不启用搜索、缓存服务、Batch 或多模态。
+- [免费额度规则](https://help.aliyun.com/zh/model-studio/new-free-quota)说明免费额度用完即停用于避免额外费用。Rui 已确认开关开启；实际精确模型的余额、到期日、专用 key 与真实样本授权仍待核验。不创建 Gemini 项目，不把免费层存在等同于账户可用。
+- 免费评测记录使用 `input_usd_per_million=0`、`output_usd_per_million=0`、`account_hard_limit_usd=0`、`free_tier_only=true`，命令费用上限设 0；现有价格/额度/账户核验日期和地区要求仍适用。此记录是人工核验凭据，不是供应商账单开关；须在供应商侧确认不能扣费。每批至多 10 次尝试，失败和重试计数，禁止用虚假正数报价绕过免费评测。
+
+## 旧模型候选核验记录（2026-09-18，选择顺序以上文为准）
 
 - GLM-4.7 的模型 ID、聊天端点及结构化输出能力见 [智谱官方文档](https://docs.bigmodel.cn/cn/guide/models/text/glm-4.7)。价格页依赖动态内容，价格和账户额度未完成核验；不能当作免费。
 - Qwen Plus 的固定候选版本为 `qwen-plus-2025-09-11`，见 [官方模型页](https://www.alibabacloud.com/help/en/model-studio/qwen-plus)；不同地区与思考模式费率不同，候选地区报价和账户额度未完成核验。兼容协议见 [官方接口页](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope)。
 - Gemini 2.5 Flash 官方标准付费文本价为每百万 input/output tokens $0.30/$2.50；也列免费层，但免费层数据可用于产品改进。见 [官方价格页](https://ai.google.dev/gemini-api/docs/pricing)。实际可用额度应查所选项目，不能沿用旧对话中的额度数字，见 [官方限制说明](https://ai.google.dev/gemini-api/docs/rate-limits)。
 
-推荐三者用同一人工标注数据集、同一划分、相同输入与调用上限分别评测；
+按上文选择评测百炼北京 Qwen Flash。使用同一人工标注数据集、同一划分与调用上限；
 每次只批准一个候选端点，不并行开通。至少 100 个获准历史样本由两人独立
 标注并裁决，锁定 holdout/hash；流程见 [evals/README.md](../evals/README.md)。
 评测入口默认仅 localhost，可计算相关性、类别、应对动作、模式匹配、
-实质变化、延迟和费用保留上界；单次硬上限 10 次尝试、1 美元，失败及重试
+实质变化、延迟和费用保留上界；本次批准范围费用上限为 0、每批至多 10 次尝试，失败及重试
 都计入。真实端点还需已核价格、地区、账户硬限、专用 key 和单独开关。
 记录失败也计入分母，优先比较严重误判、证据支持、漏判，其次看延迟和费用。
 目前没有真实质量赢家；100 个 recorded cases 是合成契约验证，

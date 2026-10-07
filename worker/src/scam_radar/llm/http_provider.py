@@ -45,9 +45,15 @@ class HttpModelProvider:
         max_calls: int = 10,
         input_char_limit: int = 10000,
         before_attempt: Callable[[int, int], None] | None = None,
+        enable_thinking: bool | None = None,
     ) -> None:
         if not model or not 0 <= max_calls <= 100 or not 1 <= input_char_limit <= 30000:
             raise ValueError("invalid_model_configuration")
+        if enable_thinking is not None and (
+            protocol != "openai" or not isinstance(enable_thinking, bool)
+        ):
+            raise ValueError("invalid_thinking_configuration")
+        self.enable_thinking = enable_thinking
         transport.validate_url(endpoint)
         self.root, self.transport, self.endpoint = root, transport, endpoint
         self.model, self.protocol, self.api_key = model, protocol, api_key
@@ -67,9 +73,10 @@ class HttpModelProvider:
             {"source_text": cleaned, "candidate_revisions": _candidate_revisions(candidates)},
             ensure_ascii=False,
         )
-        return hashlib.sha256(
-            json.dumps([self.model, prompt, schema, data], sort_keys=True).encode()
-        ).hexdigest()
+        inputs = [self.model, prompt, schema, data]
+        if self.enable_thinking is not None:
+            inputs.append({"enable_thinking": self.enable_thinking})
+        return hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
 
     def _run(
         self, stage: str, text: str, result_type: type[Result], candidates: list[str] | None = None
@@ -113,6 +120,8 @@ class HttpModelProvider:
                     "max_tokens": 4096,
                     "stream": False,
                 }
+                if self.enable_thinking is not None:
+                    payload["enable_thinking"] = self.enable_thinking
                 headers = {"Authorization": f"Bearer {self.api_key}"}
             headers["Content-Type"] = "application/json"
             request_body = json.dumps(payload).encode()

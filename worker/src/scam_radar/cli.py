@@ -126,6 +126,7 @@ def run_batch(root: Path, source_key: str) -> int:
         ),
         endpoint=endpoint,
         model=candidate["model"],
+        enable_thinking=candidate.get("enable_thinking"),
         protocol=candidate["protocol"],
         api_key=api_key,
         max_calls=settings.max_ai_calls_per_run,

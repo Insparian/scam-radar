@@ -6,12 +6,12 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 
-def _positive_decimal(value: str, name: str) -> Decimal:
+def _nonnegative_decimal(value: str, name: str) -> Decimal:
     try:
         parsed = Decimal(value)
     except InvalidOperation as error:
         raise ValueError(f"invalid_{name}") from error
-    if not parsed.is_finite() or parsed <= 0:
+    if not parsed.is_finite() or parsed < 0:
         raise ValueError(f"invalid_{name}")
     return parsed
 
@@ -38,9 +38,11 @@ class AttemptBudget:
             raise ValueError("invalid_eval_attempt_limit")
         return cls(
             max_attempts=max_attempts,
-            max_spend_usd=_positive_decimal(max_spend_usd, "eval_spend_limit"),
-            input_usd_per_million=_positive_decimal(input_usd_per_million, "eval_input_price"),
-            output_usd_per_million=_positive_decimal(output_usd_per_million, "eval_output_price"),
+            max_spend_usd=_nonnegative_decimal(max_spend_usd, "eval_spend_limit"),
+            input_usd_per_million=_nonnegative_decimal(input_usd_per_million, "eval_input_price"),
+            output_usd_per_million=_nonnegative_decimal(
+                output_usd_per_million, "eval_output_price"
+            ),
         )
 
     def reserve(self, request_bytes: int, max_output_tokens: int) -> None:

@@ -127,6 +127,7 @@ def _provider(
         transport=transport,
         endpoint=endpoint,
         model=selected["model"],
+        enable_thinking=selected.get("enable_thinking"),
         protocol=selected["protocol"],
         api_key=api_key,
         max_calls=budget.max_attempts,
@@ -167,9 +168,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             or pricing["region"] != pricing.get("approved_region")
         ):
             raise ValueError("eval_region_not_approved")
-        account_limit = Decimal(str(pricing.get("account_hard_limit_usd", "0")))
-        if not Decimal(0) < account_limit <= Decimal(1):
+        account_limit = Decimal(str(pricing["account_hard_limit_usd"]))
+        if not account_limit.is_finite() or not Decimal(0) <= account_limit <= Decimal(
+            1
+        ):
             raise ValueError("eval_account_hard_limit_exceeded")
+        if account_limit == 0 and pricing.get("free_tier_only") is not True:
+            raise ValueError("eval_free_tier_only_confirmation_required")
         if Decimal(args.max_spend_usd) > account_limit:
             raise ValueError("eval_spend_exceeds_account_limit")
     budget = AttemptBudget.from_strings(

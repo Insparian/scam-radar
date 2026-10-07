@@ -1,5 +1,37 @@
 # V0.1 offline launch readiness
 
+## 2026-10-06 亲自推进上线准备
+
+- Rui 要求由当前助手亲自执行；不派子代理。先关闭暂缓期间跨来源重复建模式的 P1，再跑完整离线验收；保留开工时已有差异。
+- 状态边界：可匹配事实来自仍有效的 approved revision；`evidence_pending` 只说明补证工作流，不能隐藏旧批准事实。候选只允许 review_ready/evidence_pending，仍排除 archived/rejected/candidate；草稿不作为匹配事实，待审冲突继续延后。
+- 模型选择经 Rui 澄清：没有 Gemini API 项目，已有百炼北京区，确认开启免费额度用完即停；选 qwen3.8-flash、北京端点、非思考 JSON 模式。真实调用、生产和发布继续等精确激活授权。
+
+- 旧 21 迁移库新 SQL 回归报 `held_approved_fact_not_matchable`；未修改独立脚本也重现 comparison=0、新建 new_pattern。证据 `work/readiness-20261006/red-database.log`、`red-original.log`。
+- 前向迁移 `20261006000100` 只扩大批准版本匹配到 evidence_pending；保留暂缓工作流、草稿冲突与 inactive 排除。22 迁移新库 database-test 通过；原脚本绿色：comparison=1、pending_review_deferred=1、无新审核、attempt=0。证据 `database.log`、`green-original.log`。
+- 仓库真实进程/审核回归通过：暂缓时另一来源两次延后，原审核批准和拒绝两分支解决后都续入同一模式，重复运行无模型调用、无新增收据。独立 joined 栈的全部根流程通过，四宽度 release 浏览器通过；`crash-green.log`、`joined.log`。
+- 26 表独立恢复与密文回读通过：`recovery.log`，细报告 `work/launch-readiness/recovery-8ab4581f37ab/report.json`、`backup-e2e-6789c59a10da/report.json`；外部上传 false。
+- 免费预算原实现拒绝 0 费率/0 上限，已修复且重试仍计数；非零报价零预算在请求前拒绝，免费账户须显式确认。Qwen 北京候选配置非思考 JSON，参数进入缓存指纹；未调用真实模型，未增加依赖或修改 prompt。
+- 最终九个根命令均通过，完整结果见 OFFLINE-ACCEPTANCE-REPORT；P1 已关闭，仅离线代码就绪。启动合成栈曾遇 Documents 挂载拒绝及多栈资源超时，改用 /private/tmp、串行停启本轮自建栈；用户原有栈保留。
+- Rui 说明账户有 89 个免费模型，测试阶段型号可灵活选择。为可复现固定当前 qwen3.8-flash 候选；后续换模型须使用同一真实 holdout 重测，生产模型仍 null、live_enabled=false。当前剩余项是外部授权、凭据、真实样本与环境验证。
+
+## 2026-10-06 leader 独立复核 — 原反例通过，整体仍有阻塞
+
+- 提交 `f7fa658`；保护原有 AGENTS、next-env、决策等未提交内容，本次未改产品代码。
+- 独立 `make check/test/eval/collect-dry-run` 均退出 0：119 Python、32 前端单元、
+  9 浏览器、100 recorded；15 来源关闭、`launch_qualified=false`。
+- 专用 `scam-radar-audit06-db` 从零应用 21 个迁移，`make database-test` 退出 0，
+  包含新增伪造拒绝与越权反向契约。证据 `work/leader06-{start,database}.log`。
+- **未修改**原独立脚本 `work/leader29-early-reject.py` 本次退出 0：首轮重启
+  processed、游标推进，随后三轮原 ID/计数/人工拒绝不变，Policy 保持 0。
+  证据 `work/leader06-original-repro.log`，确认早拒绝 P1 修复有效。
+- 额外 hold/跨来源交错失败：已有批准模式处于 needs_evidence 时，另一来源
+  同类文章没有进行模式比较，直接创建第二个 new_pattern；原审核仍未解决。
+  证据 `work/leader06-held-conflict.log` 与最新 BLOCKED 段。需修复批准模式
+  可匹配性与待审工作流的边界；整体离线就绪暂不签字。
+- 发现阻塞后未继续复跑 demo、完整 joined/deployment/recovery 根目标，
+  不把执行方历史日志算作本次独立通过。未启用真实采集/模型/生产读写/
+  上传/发布/DNS，未提交或推送本次复核记录。
+
 ## 2026-09-29 P1 再开工：审核先于恢复的时序
 
 1. 独立红灯 `work/leader29-early-reject.log`：证据已提交、Policy 0、浏览器先拒绝后，四次重启均 `existing_recovery_read_failed`，游标空；保留 `AGENTS.md`、`docs/BLOCKED.md`、`docs/PROGRESS.md`、`web/next-env.d.ts` 等原有未提交差异。

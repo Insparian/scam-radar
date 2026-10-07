@@ -1,5 +1,26 @@
 # Scam Radar V0.1 离线验收报告 — 2026-09-29
 
+## 2026-10-07 22 迁移重新验收
+
+**结论：V0.1 离线代码验收通过；真实上线仍未达标。** 10 月 6 日独立复核的 P1 已关闭：暂缓补证期间，旧批准 revision 仍参与匹配；草稿不参与事实匹配。另一来源仍必须因待审冲突延后，不能重复创建骗局。新迁移保留归档、拒绝、未批准排除和人类审核门槛；未修改的独立反例从 comparison=0/new_pattern 转为 comparison=1/pending_review_deferred=1/attempt=0。
+
+| 最终本地命令 | 结果 | 证据（忽略的 `work/readiness-20261006/`） |
+| --- | --- | --- |
+| `make check` | 通过：格式、lint、类型、生成类型、权限/秘密检查、前端单元 32 | `check-final.log` |
+| `make test` | 通过：Python 140、浏览器 9；最终免费额度入口窄测另有 20 通过 | `test-final.log`、`qwen-protocol.log` |
+| `make eval` | 100 个 recorded 合成案例通过；行为 hash `dcaaae7f…`，`launch_qualified=false` | `eval-final.log` |
+| `make demo` | 精确 fixture release，100 个静态文件、秘密检查通过 | `demo.log` |
+| `make collect-dry-run` | 15 个来源保持关闭；真实请求 0 | `collect-final.log` |
+| `make database-test` | 从零应用 22 迁移；SQL 权限/待审/非批准排除与本地采集协议通过 | `database.log` |
+| `make joined-local-e2e` | 第二独立新库：真实进程中断、暂缓交错、浏览器批准/拒绝、同一 release 四宽度通过 | `joined.log` |
+| `make deployment-local-e2e` | 第三独立新库：localhost Pages 上传/登记丢失对账、旧版拒绝、原版回退、失败撤回通过 | `deployment.log` |
+| `make recovery-rehearsal` | 26 表、精确 release/RLS、age 密文→localhost S3 回读、篡改拒绝通过 | `recovery.log` |
+
+旧版红证据 `red-database.log` 与 `red-original.log`；新迁移绿证据 `crash-green.log`、`green-original.log`。备份细报告 `work/launch-readiness/recovery-8ab4581f37ab/report.json`、`backup-e2e-6789c59a10da/report.json`。这些全部是本机合成数据，未调用 Gemini/百炼、未采真实来源、未写生产库、未上传备份、未发布网站或改 DNS。
+
+Rui 确认拥有多个百炼免费模型，北京工作区“免费额度用完即停”已开启。当前固定 `qwen3.8-flash` 作测试候选，非思考 JSON、本地复验通过。模型可换，但每次换 ID/模式都要重新运行同一真实 holdout 评测，以便比较。生产选择仍为空、直播开关关闭。账户该模型余额/到期日、专用凭据、获准历史样本与真实质量未验；免费额度并不替代质量验收。真实来源许可、生产恢复、七天观察、公众设备/微信访问及正式发布确认仍是外部关卡，见 [BLOCKED.md](BLOCKED.md)。
+
+
 ## 2026-09-29 第二次独立反例修复：21 迁移最终状态
 
 **结论：离线就绪，待最终集中确认。** 上一节的 20 迁移结果曾漏掉“提交证据后、Policy 前，审核员先拒绝”时序；独立复核因此正确地重新打开 P1。现以第 21 个前向迁移核验真实人工拒绝事件及证据/草稿终态；终态已拒绝的候选无法再合法写 Policy，worker 在确认无公开批准后完成来源并推进游标。待审/审核中草稿继续补真实 shadow Policy；新暂缓状态保留原 row_version，补 Policy 后仍由人工决定；旧暂缓状态安全归还认领、不耗重试，人工拒绝后恢复旧批准模式可匹配状态。无收据、伪造拒绝事件、越权角色和旧认领仍被拒绝。

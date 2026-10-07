@@ -159,10 +159,69 @@ def test_eval_budget_counts_failed_retry_and_denies_before_network(
     assert len(received) == 2
 
 
+def test_free_eval_counts_retries_and_zero_cap_blocks_paid_request(
+    repository_root: Path, protocol_server: tuple[str, list[dict[str, Any]]]
+) -> None:
+    origin, received = protocol_server
+    budget = AttemptBudget.from_strings(
+        max_attempts=2,
+        max_spend_usd="0",
+        input_usd_per_million="0",
+        output_usd_per_million="0",
+    )
+    provider = HttpModelProvider(
+        root=repository_root,
+        transport=BoundedHttpTransport(allowed_origins={origin}, min_interval=0),
+        endpoint=origin + "/malformed",
+        model="local-free-model",
+        protocol="openai",
+        max_calls=3,
+        before_attempt=budget.reserve,
+    )
+    assert provider.classify("synthetic", "合成风险提醒").relevant
+    assert provider.calls == budget.attempts == len(received) == 2
+    assert budget.reserved_usd == 0
+    with pytest.raises(RuntimeError, match="eval_call_budget_exhausted"):
+        provider.classify("synthetic", "合成风险提醒")
+    for input_price, output_price in (("0.01", "0"), ("0", "0.01")):
+        denied = AttemptBudget.from_strings(
+            max_attempts=2,
+            max_spend_usd="0",
+            input_usd_per_million=input_price,
+            output_usd_per_million=output_price,
+        )
+        paid = HttpModelProvider(
+            root=repository_root,
+            transport=BoundedHttpTransport(allowed_origins={origin}, min_interval=0),
+            endpoint=origin + "/chat",
+            model="local-paid-model",
+            protocol="openai",
+            max_calls=2,
+            before_attempt=denied.reserve,
+        )
+        with pytest.raises(RuntimeError, match="eval_spend_budget_exhausted"):
+            paid.classify("synthetic", "合成风险提醒")
+        assert paid.calls == denied.attempts == 0
+    assert len(received) == 2
+
+
+@pytest.mark.parametrize("value", ["-1", "NaN", "Infinity", "-Infinity", "invalid"])
+@pytest.mark.parametrize(
+    "field", ["max_spend_usd", "input_usd_per_million", "output_usd_per_million"]
+)
+def test_free_eval_rejects_invalid_amounts(value: str, field: str) -> None:
+    amounts = dict(max_spend_usd="0", input_usd_per_million="0", output_usd_per_million="0")
+    amounts[field] = value
+    with pytest.raises(ValueError, match="invalid_eval_"):
+        AttemptBudget.from_strings(max_attempts=2, **amounts)
+
+
+@pytest.mark.parametrize("free", [False, True])
 def test_dormant_live_eval_entry_counts_local_failure_and_refuses_activation(
     repository_root: Path,
     protocol_server: tuple[str, list[dict[str, Any]]],
     tmp_path: Path,
+    free: bool,
 ) -> None:
     import os
     import subprocess
@@ -188,8 +247,8 @@ def test_dormant_live_eval_entry_counts_local_failure_and_refuses_activation(
         json.dumps(
             {
                 "candidate": "glm",
-                "input_usd_per_million": "0.01",
-                "output_usd_per_million": "0.01",
+                "input_usd_per_million": "0" if free else "0.01",
+                "output_usd_per_million": "0" if free else "0.01",
             }
         )
     )
@@ -208,7 +267,7 @@ def test_dormant_live_eval_entry_counts_local_failure_and_refuses_activation(
         "--max-calls",
         "3",
         "--max-spend-usd",
-        "1",
+        "0" if free else "1",
     ]
     local = subprocess.run(
         [*command, "--local-endpoint", origin + "/chat"], capture_output=True, check=False
@@ -219,7 +278,7 @@ def test_dormant_live_eval_entry_counts_local_failure_and_refuses_activation(
     assert contents["failed_cases"] == 1
     assert contents["scope"] == "local_protocol_only"
     assert contents["launch_qualified"] is False
-    assert float(contents["reserved_spend_upper_bound_usd"]) > 0
+    assert (float(contents["reserved_spend_upper_bound_usd"]) == 0) is free
     assert "合成风险提醒" not in report.read_text()
     blocked = subprocess.run(
         command,
@@ -274,3 +333,104 @@ def test_configured_eval_entry_all_candidates(
         assert "合成风险提醒" not in output.read_text()
         hashes.add(report["dataset_sha256"])
     assert len(hashes) == 1
+
+
+@pytest.mark.parametrize("confirmed,has_limit", [(True, True), (False, True), (True, False)])
+def test_free_live_eval_requires_account_confirmation_before_provider(
+    repository_root: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    confirmed: bool,
+    has_limit: bool,
+) -> None:
+    import argparse
+    import runpy
+    from datetime import UTC, datetime
+
+    entry = runpy.run_path(str(repository_root / "evals/run_live_eval.py"))
+    run = entry["run"]
+    monkeypatch.setitem(run.__globals__, "ROOT", tmp_path)
+    (tmp_path / "work").mkdir()
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config/models.yaml").write_text(
+        "evaluation_candidates:\n  gemini:\n    endpoint: https://model.example.invalid\n"
+    )
+    cases = tmp_path / "work/cases.json"
+    cases.write_text(
+        json.dumps([dict(id="synthetic-case", text="synthetic", expected_relevant=False)])
+    )
+    pricing = tmp_path / "work/pricing.json"
+    today = datetime.now(UTC).date().isoformat()
+    pricing.write_text(
+        json.dumps(
+            dict(
+                candidate="gemini",
+                input_usd_per_million="0",
+                output_usd_per_million="0",
+                account_hard_limit_usd="0",
+                free_tier_only=confirmed,
+                price_verified_at=today,
+                quota_verified_at=today,
+                account_hard_limit_verified_at=today,
+                region="synthetic",
+                approved_region="synthetic",
+            )
+        )
+    )
+    if not has_limit:
+        record = json.loads(pricing.read_text())
+        record.pop("account_hard_limit_usd")
+        pricing.write_text(json.dumps(record))
+    monkeypatch.setenv("SCAM_RADAR_LIVE_ACTIVATION_APPROVED", "true")
+    monkeypatch.setenv("SCAM_RADAR_LIVE_EVAL_APPROVED", "true")
+
+    def stop_before_network(*args: object, **kwargs: Any) -> None:
+        assert kwargs["budget"].max_spend_usd == 0
+        assert kwargs["budget"].attempts == 0
+        raise RuntimeError("verified_budget_before_network")
+
+    monkeypatch.setitem(run.__globals__, "_provider", stop_before_network)
+    args = argparse.Namespace(
+        candidate="gemini",
+        cases=cases,
+        pricing=pricing,
+        output=tmp_path / "work/report.json",
+        local_endpoint=None,
+        confirmation=entry["CONFIRMATION"],
+        max_calls=2,
+        max_spend_usd="0",
+    )
+    expected = (
+        "verified_budget_before_network"
+        if confirmed
+        else "eval_free_tier_only_confirmation_required"
+    )
+    if not has_limit:
+        expected = "account_hard_limit_usd"
+    with pytest.raises((RuntimeError, ValueError, KeyError), match=expected):
+        run(args)
+
+
+def test_qwen_config_sends_non_thinking_json_and_isolates_cache(
+    repository_root: Path, protocol_server: tuple[str, list[dict[str, Any]]]
+) -> None:
+    from scam_radar.llm.configured import evaluation_provider
+
+    origin, received = protocol_server
+    selected = evaluation_provider(repository_root, "qwen", local_endpoint=origin + "/chat")
+    assert selected.classify("synthetic", "合成风险提醒").relevant
+    assert received[0]["enable_thinking"] is False
+    assert received[0]["response_format"] == {"type": "json_object"}
+    assert received[0]["stream"] is False
+    default = HttpModelProvider(
+        root=repository_root,
+        transport=BoundedHttpTransport(allowed_origins={origin}, min_interval=0),
+        endpoint=origin + "/chat",
+        model=selected.model,
+        protocol="openai",
+    )
+    assert default.fingerprint("relevance-v1", "synthetic") != selected.fingerprint(
+        "relevance-v1", "synthetic"
+    )
+    assert default.classify("synthetic", "合成风险提醒").relevant
+    assert "enable_thinking" not in received[1]

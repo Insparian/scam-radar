@@ -36,6 +36,7 @@ def evaluation_provider(
         transport=transport,
         endpoint=local_endpoint,
         model=selected["model"],
+        enable_thinking=selected.get("enable_thinking"),
         protocol=cast(Literal["openai", "gemini"], protocol),
         max_calls=max_calls,
         input_char_limit=input_char_limit,

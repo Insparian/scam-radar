@@ -44,5 +44,13 @@ request before it leaves the process. Outputs always say
 unverified until the authorized trial, manual error review, and the separate
 release decision.
 
+For free-tier evaluation, set input/output prices, account hard limit and
+`--max-spend-usd` to zero and record `free_tier_only: true` after verifying the
+provider account cannot incur charges. Zero prices still consume attempt budget,
+including retries. Any positive price with a zero spending cap is denied before
+network access. This attestation does not change provider billing settings.
+Rui selected the existing Alibaba Model Studio Beijing account with free-quota-only
+enabled and the current Qwen Flash candidate in config/models.yaml. No paid fallback.
+
 Reports are written to ignored `work/evals/`; the versioned policy and synthetic
 catalog remain under `evals/gold/` and `evals/expected/`.
