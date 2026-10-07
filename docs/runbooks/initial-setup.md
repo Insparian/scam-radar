@@ -32,6 +32,29 @@ compiled site and grant no authority by themselves. Never place a secret/service
 database URL, reviewer email, or password in a `NEXT_PUBLIC_` variable. Omit either
 public value to make the admin surface fail closed without a network request.
 
+The ignored local `.env` is only for local runs; it does not populate GitHub Actions.
+Fill GitHub variables and encrypted secrets only for the approved stage. Collection
+has no protected GitHub environment, so its values must be repository-level;
+keep its activation switches off until Rui approves that live path.
+
+| Stage and GitHub location | Variables | Encrypted secrets |
+| --- | --- | --- |
+| Production database foundation — `supabase-production` environment | None | `SUPABASE_DB_URL`, `SUPABASE_REVIEWER_EMAIL` |
+| Protected reviewer — `cloudflare-preview` environment | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `REVIEWER_ACCESS_READY` after Access verification | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
+| One-source collection — repository level | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_APPROVED_SOURCE_KEY` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `SCAM_RADAR_MODEL_API_KEY` |
+| Encrypted backup — `production-backup` environment | `SCAM_RADAR_AGE_RECIPIENT`, `SCAM_RADAR_BACKUP_PGHOST`, `SCAM_RADAR_BACKUP_PGUSER`, `SCAM_RADAR_R2_ACCOUNT_ID`, `SCAM_RADAR_R2_BUCKET` | `SCAM_RADAR_BACKUP_PGPASSWORD`, `SCAM_RADAR_SUPABASE_CA_PEM`, `SCAM_RADAR_R2_ACCESS_KEY_ID`, `SCAM_RADAR_R2_SECRET_ACCESS_KEY` |
+| Immutable public release — `production` environment | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_PAGES_PROJECT`, `SCAM_RADAR_PAGES_PRODUCTION_BRANCH` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_TOKEN` |
+
+The local model evaluation uses `SCAM_RADAR_EVAL_API_KEY` in `.env`; it is not a
+GitHub Actions secret. The Beijing worker credential goes in the separate
+`SCAM_RADAR_MODEL_API_KEY` GitHub secret for an approved live run; it may be a
+different key. Leave every `SCAM_RADAR_*_ENABLED`,
+`SCAM_RADAR_LIVE_ACTIVATION_APPROVED`, and `SCAM_RADAR_LIVE_EVAL_APPROVED` variable
+unset or `false` until the corresponding activation is approved. The backup and
+deployment workflows also require their own exact confirmation values after
+approval. Do not fill an unavailable R2 bucket or publishable key with an invented
+value.
+
 ## Real local database contract — optional
 
 This check uses disposable local containers and synthetic `.invalid` data only. It does

@@ -1,5 +1,13 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 云端填写项与上线反馈复核
+
+- 再次只读确认 Supabase `scam-radar` 仍暂停，Cloudflare 公开 Pages 项目仍只有 preview、没有 production 部署；未点击恢复、上传或 DNS。
+- 只检查本地忽略的 `.env` 字段状态，未展示或输出密钥值：百炼评测与 worker Key 已填，六个激活开关均为 false；Supabase、Cloudflare、R2 与公开 reviewer 字段仍未填。`.env` 不会自动进入 GitHub Actions。
+- `docs/runbooks/initial-setup.md` 已按实际 workflow 列出各阶段 GitHub Variables/Secrets 及其存放位置，提醒采集使用 repository-level 凭据且激活开关保持关闭。
+- 生产迁移工作流原报告写死旧迁移版本号，现改为显示实际迁移步骤结果并要求核对 Supabase 已应用版本；迁移与 reviewer 报告的旧 Gemini 字样改为通用 live AI。未改变任何云操作、请求或权限。
+- `make check`、修改过的 workflow YAML 解析与 `git diff --check` 通过。外部激活仍为 0；恢复 Supabase、核对百炼账户额度和 Namecheap DNS 的权限/登录答复仍待 Rui。
+
 ## 2026-10-07 凭据与 DNS 续查
 
 - 本地忽略的 `.env` 中 `SCAM_RADAR_EVAL_API_KEY`、`SCAM_RADAR_MODEL_API_KEY` 已非空；仅检查字段是否存在，未输出密钥内容，真实模型调用仍为 0。

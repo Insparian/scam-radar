@@ -64,6 +64,7 @@ jobs:
       - name: Preview forward migrations
         run: npx --yes supabase@2.115.0 db push --db-url "$SUPABASE_DB_URL" --include-all --dry-run
       - name: Apply forward migrations
+        id: apply_migrations
         run: npx --yes supabase@2.115.0 db push --db-url "$SUPABASE_DB_URL" --include-all
       - name: Authorize the pre-created reviewer identity
         run: python scripts/supabase_foundation.py bootstrap-reviewer
@@ -71,15 +72,18 @@ jobs:
         run: python scripts/supabase_foundation.py verify
       - name: Record the narrow activation scope
         if: always()
+        env:
+          MIGRATION_OUTCOME: ${{ steps.apply_migrations.outcome }}
         run: |
           {
             echo "## Production Supabase reviewer migration"
             echo ""
-            echo "- Forward migrations through 20260917000100: requested"
+            echo "- Forward migration step outcome: ${MIGRATION_OUTCOME:-not run}"
+            echo "- Verify actual applied versions in Supabase before using this project"
             echo "- Reviewer mailbox: withheld"
             echo "- Real source evidence: 0"
             echo "- Collection: disabled"
-            echo "- Gemini: disabled"
+            echo "- Live AI: disabled"
             echo "- Backup upload: disabled"
             echo "- Reviewer web deployment: handled separately"
             echo "- Public production deployment: disabled"

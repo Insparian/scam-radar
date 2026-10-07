@@ -191,5 +191,5 @@ jobs:
             echo "- Cloudflare Access: unauthenticated request blocked before and after upload"
             echo "- Supabase configuration: public URL and publishable key only"
             echo "- Real source evidence: 0"
-            echo "- Collection, Gemini, backup, public production deploy, and auto-publish: disabled"
+            echo "- Collection, live AI, backup, public production deploy, and auto-publish: disabled"
           } >> "$GITHUB_STEP_SUMMARY"
