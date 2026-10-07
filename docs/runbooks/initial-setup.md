@@ -41,7 +41,7 @@ keep its activation switches off until Rui approves that live path.
 | --- | --- | --- |
 | Production database foundation — `supabase-production` environment | None | `SUPABASE_DB_URL`, `SUPABASE_REVIEWER_EMAIL` |
 | Public fixture preview — `cloudflare-preview` environment | `SCAM_RADAR_PUBLIC_PAGES_PROJECT`, `SCAM_RADAR_PUBLIC_PREVIEW_URL` from the dedicated account's actual Pages project and branch alias | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
-| Protected reviewer — `cloudflare-preview` environment | `SCAM_RADAR_REVIEWER_PAGES_PROJECT`, `SCAM_RADAR_REVIEWER_PREVIEW_URL` from the dedicated account's actual Pages project and branch alias; `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `REVIEWER_ACCESS_READY` after Access verification | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
+| Protected reviewer — `cloudflare-preview` environment | `SCAM_RADAR_REVIEWER_PAGES_PROJECT`, `SCAM_RADAR_REVIEWER_PREVIEW_URL` from the dedicated account's actual Pages project and branch alias; `SCAM_RADAR_REVIEWER_ACCESS_HOST` from the dedicated account's Zero Trust team domain; `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `REVIEWER_ACCESS_READY` after Access verification | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
 | One-source collection — repository level | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_APPROVED_SOURCE_KEY` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `SCAM_RADAR_MODEL_API_KEY` |
 | Encrypted backup — `production-backup` environment | `SCAM_RADAR_AGE_RECIPIENT`, `SCAM_RADAR_BACKUP_PGHOST`, `SCAM_RADAR_BACKUP_PGUSER`, `SCAM_RADAR_KV_ACCOUNT_ID`, `SCAM_RADAR_KV_NAMESPACE_ID` | `SCAM_RADAR_BACKUP_PGPASSWORD`, `SCAM_RADAR_SUPABASE_CA_PEM`, `SCAM_RADAR_KV_TOKEN` |
 | Immutable public release — `production` environment | `SCAM_RADAR_SUPABASE_URL`, `SCAM_RADAR_PAGES_PROJECT`, `SCAM_RADAR_PAGES_PRODUCTION_BRANCH` | `SCAM_RADAR_SUPABASE_SERVICE_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_TOKEN` |
@@ -63,7 +63,10 @@ A taken name may receive a different subdomain. Set the full branch aliases
 (for example, `https://preview.<actual-subdomain>.pages.dev`) in
 `cloudflare-preview`; the workflows reject the shared account's old preview
 URLs. Do not run either preview deployment until its target and, for the reviewer,
-Access policy are reviewed.
+Access policy are reviewed. Set `SCAM_RADAR_REVIEWER_ACCESS_HOST` to the exact
+hostname of the dedicated account's Access login (for example,
+`scam-radar.cloudflareaccess.com`, without a scheme or path); the reviewer
+pre/post-upload probes reject a redirect to any other Zero Trust team.
 
 ## Real local database contract — optional
 

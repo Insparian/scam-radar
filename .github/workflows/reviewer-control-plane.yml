@@ -102,6 +102,7 @@ jobs:
     env:
       REVIEWER_PROJECT: ${{ vars.SCAM_RADAR_REVIEWER_PAGES_PROJECT }}
       REVIEWER_URL: ${{ vars.SCAM_RADAR_REVIEWER_PREVIEW_URL }}
+      REVIEWER_ACCESS_HOST: ${{ vars.SCAM_RADAR_REVIEWER_ACCESS_HOST }}
       SCAM_RADAR_ENV: reviewer
       SCAM_RADAR_COLLECT_ENABLED: "false"
       SCAM_RADAR_AI_ENABLED: "false"
@@ -130,6 +131,10 @@ jobs:
           [[ "$reviewer_subdomain" == "$REVIEWER_PROJECT"* ]] && \
             [ "$REVIEWER_URL" != "https://reviewer.insparian-scam-radar-reviewer.pages.dev" ] || {
             echo "Reviewer preview URL does not match the dedicated Pages target."
+            exit 1
+          }
+          [[ "$REVIEWER_ACCESS_HOST" =~ ^[a-z0-9]+(-[a-z0-9]+)*\.cloudflareaccess\.com$ ]] || {
+            echo "Dedicated reviewer Access login hostname is missing or invalid."
             exit 1
           }
       - name: Require the reviewed Access gate
@@ -168,7 +173,7 @@ jobs:
       - name: Verify Access blocks the empty preview before build or upload
         env:
           SCAM_RADAR_ALLOW_REVIEWER_SMOKE: "true"
-        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL"
+        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL" --access-host="$REVIEWER_ACCESS_HOST"
       - name: Install locked build dependencies
         run: |
           python -m pip install uv==0.12.5
@@ -205,7 +210,7 @@ jobs:
       - name: Verify Access still blocks the deployed preview
         env:
           SCAM_RADAR_ALLOW_REVIEWER_SMOKE: "true"
-        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL"
+        run: python scripts/check_reviewer_access.py --url="$REVIEWER_URL" --access-host="$REVIEWER_ACCESS_HOST"
       - name: Record the narrow activation scope
         run: |
           {

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
@@ -20,20 +21,30 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def validate_access_redirect(status: int, location: str | None) -> None:
+def validate_access_redirect(
+    status: int, location: str | None, expected_host: str
+) -> None:
+    if not re.fullmatch(
+        r"[a-z0-9]+(?:-[a-z0-9]+)*\.cloudflareaccess\.com", expected_host
+    ):
+        raise RuntimeError("dedicated Access login hostname is missing or invalid")
     if status not in {301, 302, 303, 307, 308} or not location:
         raise RuntimeError("reviewer URL is not blocked by an Access redirect")
     target = urlparse(location)
     if (
         target.scheme != "https"
-        or not target.hostname
-        or not target.hostname.endswith(".cloudflareaccess.com")
-        or "/cdn-cgi/access/" not in target.path
+        or target.hostname != expected_host
+        or target.username
+        or target.password
+        or target.port
+        or not target.path.startswith("/cdn-cgi/access/")
     ):
-        raise RuntimeError("reviewer URL did not redirect to Cloudflare Access")
+        raise RuntimeError(
+            "reviewer URL did not redirect to dedicated Cloudflare Access"
+        )
 
 
-def assert_access_protected(url: str) -> None:
+def assert_access_protected(url: str, expected_host: str) -> None:
     parsed = urlparse(url)
     if (
         parsed.scheme != "https"
@@ -55,7 +66,7 @@ def assert_access_protected(url: str) -> None:
     except urllib.error.HTTPError as error:
         status = error.code
         location = error.headers.get("Location")
-    validate_access_redirect(status, location)
+    validate_access_redirect(status, location, expected_host)
 
 
 def main() -> int:
@@ -63,12 +74,13 @@ def main() -> int:
         description="Fail unless the reviewer Pages URL is protected by Cloudflare Access."
     )
     parser.add_argument("--url", required=True)
+    parser.add_argument("--access-host", required=True)
     args = parser.parse_args()
     if os.getenv("SCAM_RADAR_ALLOW_REVIEWER_SMOKE") != "true":
         raise RuntimeError(
             "reviewer Access check is disabled; use only after activation approval"
         )
-    assert_access_protected(args.url)
+    assert_access_protected(args.url, args.access_host)
     print("reviewer access boundary ok: unauthenticated request blocked")
     return 0
 

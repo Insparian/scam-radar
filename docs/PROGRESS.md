@@ -1,5 +1,11 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 专用审核站 Access 登录域名校验
+
+- 审核站旧探针只要求跳转到任意 `*.cloudflareaccess.com`，迁入新账户后可能误把旧 Zero Trust 团队的登录页当成新账户保护。现要求 `cloudflare-preview` 环境提供专用账户的精确 `SCAM_RADAR_REVIEWER_ACCESS_HOST`；上传前后的同一 HEAD 探针只接受该域名的 Access 跳转。缺值、错误格式或其他团队域名均拒绝；未增加网络请求或依赖。
+- 专用账户尚未建立 Zero Trust 团队，故该值当前未知，审核站上传继续失败关闭。对空项目预览别名能否在首次上传前完成 Access HEAD 探针，仍需获批创建/设置后实测；不能以文档推断已经可用。
+- `make check`、`make test` 通过：158 Python、9 Node、9 浏览器；工作流 YAML 解析及 4 个本地环境变量守卫案例通过。只跑本地合成/localhost，没有访问审核站预览或发出新的外部请求。
+
 ## 2026-10-07 专用账户审核站 Access 前置核对
 
 - 新账户 Workers & Pages 页显示 `Set up Zero Trust before requiring Access sign-in`；进入设置入口只读查看，提供 `Zero Trust Free $0 / seat / month`、50 seat 上限，旁边有付费 Standard。未选套餐、未接受条款、未创建 Zero Trust 组织或 Access 策略。审核站部署前还须在专用账户开通 Free 并验证未登录访问被拦截；不能沿用旧共享账户的 Access 保护。
