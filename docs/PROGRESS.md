@@ -10,6 +10,7 @@
 - 提交 `04edac9` 已推送 `origin/main`。推送响应提示默认分支 5 项 Dependabot 漏洞（1 critical、2 high、2 moderate）；Rui 随后授权只读查看告警。四组受影响包为 Next.js、sharp、source-map-js 和两个版本段的 brace-expansion，均有补丁；已只更新现有依赖及锁文件至修复版本。Next.js 16.3.6、sharp 0.35.5、source-map-js 1.2.2、brace-expansion 1.1.21/5.0.12 均已在本地解析。
 - `make check`、`make test`（140 Python、9 浏览器）、`make demo`（100 文件静态导出）通过；第一次 `make test` 被沙箱拒绝 localhost bind，获准本地回环后同一套件通过。完整 npm 在线审计仍显示 5 个 high，均为 `eslint-config-next` 的开发工具依赖链；`npm audit --omit=dev` 对生产依赖为 0。`npm ci --offline` 重建锁文件成功，但离线审计缓存显示 0 不代表在线 5 个开发告警消失。
 - `.env.example` 原有 Gemini/旧 Supabase/R2 名称与当前运行入口不符，现已改为北京 Qwen 评测/worker 和 GitHub workflow 实际变量名，保持假值与全部激活开关关闭。静态产物秘密名扫描增加当前私密变量名。
+- 安全修复提交 `5bba76b` 已推送；GitHub 随后重扫显示 Dependabot open 0、closed 16，本轮 5 项告警已关闭。工作区与 `origin/main` 一致。
 
 ## 2026-10-06 亲自推进上线准备
 
