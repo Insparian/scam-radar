@@ -33,6 +33,23 @@ class LocalKV:
         return Response(b'{"success":true}')
 
 
+class DelayedVisibilityKV(LocalKV):
+    def __init__(self, hidden_reads):
+        super().__init__()
+        self.hidden_reads = hidden_reads
+        self.delayed_key = None
+
+    def open(self, request, timeout):
+        key = unquote(request.full_url.rsplit("/values/", 1)[1])
+        if request.get_method() == "GET" and key == self.delayed_key and self.hidden_reads > 0:
+            self.hidden_reads -= 1
+            raise HTTPError(request.full_url, 404, "cached-miss", {}, None)
+        response = super().open(request, timeout)
+        if request.get_method() == "PUT" and self.delayed_key is None:
+            self.delayed_key = key
+        return response
+
+
 def backup_fixture(root: Path, scope="synthetic_local_only") -> Path:
     folder = root / "work" / "kv-test"
     folder.mkdir(parents=True)
@@ -104,6 +121,32 @@ def test_existing_key_conflict_rejected(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="immutable_key_conflict"):
         store(fake).upload(manifest)
     assert fake.writes == 0
+
+
+def test_cached_missing_key_waits_for_readback_without_rewriting(tmp_path, monkeypatch):
+    monkeypatch.setattr(kv, "ROOT", tmp_path)
+    waits = []
+    monkeypatch.setattr(kv.time, "sleep", waits.append)
+    manifest = backup_fixture(tmp_path)
+    fake = DelayedVisibilityKV(hidden_reads=7)
+
+    store(fake).upload(manifest)
+
+    assert waits == list(kv.READBACK_RETRY_DELAYS)
+    assert fake.writes == 2  # one chunk and the final manifest
+
+
+def test_unverified_write_never_publishes_manifest(tmp_path, monkeypatch):
+    monkeypatch.setattr(kv, "ROOT", tmp_path)
+    monkeypatch.setattr(kv.time, "sleep", lambda _seconds: None)
+    manifest = backup_fixture(tmp_path)
+    fake = DelayedVisibilityKV(hidden_reads=8)
+
+    with pytest.raises(RuntimeError, match="kv_write_unverified"):
+        store(fake).upload(manifest)
+
+    assert fake.writes == 1
+    assert f"scam-radar-backup/{'a' * 32}/manifest.json" not in fake.values
 
 
 def test_corrupt_remote_chunk_rejected_on_download(tmp_path, monkeypatch):

@@ -27,6 +27,7 @@ BACKUP_CONFIRMATION = "BACKUP APPROVED CIPHERTEXT ONLY"
 CHUNK_BYTES = 16 * 1024 * 1024
 MAX_KV_VALUE_BYTES = 25 * 1024 * 1024
 MAX_CIPHERTEXT_BYTES = 64 * 1024 * 1024
+READBACK_RETRY_DELAYS = (1, 2, 4, 8, 16, 30, 30)
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -145,14 +146,14 @@ class KVBackupStore:
                 raise RuntimeError("kv_write_response_invalid") from error
         elif status not in (0, 429, 500, 502, 503, 504):
             raise RuntimeError(f"kv_write_failed_{status}")
-        for attempt in range(4):
+        for attempt in range(len(READBACK_RETRY_DELAYS) + 1):
             remote = self._get(key)
             if remote == value:
                 return
             if remote is not None:
                 raise RuntimeError("kv_remote_hash_mismatch")
-            if attempt < 3:
-                time.sleep(0.25 * (attempt + 1))
+            if attempt < len(READBACK_RETRY_DELAYS):
+                time.sleep(READBACK_RETRY_DELAYS[attempt])
         raise RuntimeError("kv_write_unverified")
 
     def upload(self, manifest_path: Path) -> dict[str, str]:
