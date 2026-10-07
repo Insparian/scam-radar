@@ -2,6 +2,7 @@
 
 ## 2026-10-07 只读核查后具体阻塞
 
+- 自动监测不能只依赖 GitHub Actions 的定时触发：公开仓库连续 60 天无活动会自动停用计划工作流。Rui 已用 `proceed` 批准 Decision 014 的离线设计：Cloudflare Workers Free Cron → 单来源 GitHub `workflow_dispatch`；本地代码移除 GitHub schedule，Worker 默认关闭。尚未创建 Worker、配置令牌、触发真实任务或验证远端状态；也没有独立的缺席告警，不能宣称长期持续监测已经验收。启用 F10 与真实采集仍需单独最终批准。
 - Rui 最新限定只开真正免费的 Cloudflare 服务，不开通其他服务。现有 Pages Free 项目可沿用；R2 开通须接受按量计费，故不启用。Supabase Free 又不含项目定时备份，当前设计没有已批准的真实离站备份目的地；真实数据写入与恢复关卡继续阻塞，不能降低备份门槛来宣称上线。
 - 已核对现有 GitHub Actions artifact 作为免费备份候选：公开仓库的登录读者可下载 artifact，GitHub Free 的 artifact/Packages 共享存储额度为 500 MB，公开仓库 artifact 最长保留 90 天，超额可能计费或在硬预算下停止。它既不是已批准的私有 R2 目的地，也不能在当前约束下保证备份持续成功；未上传任何生产数据。
 - Cloudflare 免费全球网络不提供中国境内节点保障；中国网络需 Enterprise 加独立订阅和 ICP 备案。`scamradar.insparian.com` 还没有正式部署/DNS，不能声称大陆可用。先做三网、iOS/Android、微信实测；若大陆稳定性不达标，阿里云内地部署又涉及付费与备案，当前约束下暂不启动。

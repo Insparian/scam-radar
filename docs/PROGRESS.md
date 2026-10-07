@@ -1,5 +1,13 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 自动监测调度可靠性核查
+
+- 本地 `collect.yml` 设有每天 3 次北京时间计划运行，并保留外部激活开关。[GitHub 官方规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)确认 timezone 语法有效，但公开仓库 60 天无活动会自动停用计划工作流，且高负载时计划运行可能延迟或丢弃。当前没有独立检测“本应运行却完全没有运行”的心跳，因此不能把 cron 文件存在当作长期自动监测已验收。
+- [Cloudflare Workers Free 限额](https://developers.cloudflare.com/workers/platform/limits/)包含 5 个 Cron Triggers；[Cron 文档](https://developers.cloudflare.com/workers/configuration/cron-triggers/)确认可按计划运行。此为免费方案候选，不等于已确定可行或获授权；若用于唤醒/观察 GitHub Actions，将新增 Cloudflare→GitHub 请求和凭据托管，须经过产品与数据流确认。没有创建 Worker 或发送请求。
+- Rui 随后对完整 Decision 014 摘要回复 `proceed`，授权离线实现这条免费调度路径。已将 `collect.yml` 改为仅手动/API 触发，新增默认关闭、无公开 HTTP 路由的 Workers Free Cron 代码和本地无网络测试；请求固定到一个 GitHub 工作流，只传来源 key、`main`、`dry_run=false` 与专用 token，GitHub 端仍独立检查激活和来源。数据去向与启停见 [scheduler runbook](runbooks/scheduler.md) 和 `docs/data-flow.md` F10。未创建云资源、存入真令牌或运行真实任务；缺席告警及七天真实稳定性仍待验证。
+- 固定 Wrangler `4.130.0` 的本地 `deploy --dry-run` 通过，构建大小 1.69 KiB，输出 `No bindings found`，未部署。首次运行显示 Wrangler 默认匿名使用统计提示，不能证明该次是否发送统计；没有业务数据或密钥参与。随后在调度器配置设置 `send_metrics=false`，后续 CLI 运行还需显式 `WRANGLER_SEND_METRICS=false`。
+- 最终本地验证：`make check` 通过；`make test` 通过（146 Python、6 个调度器、9 个浏览器）；固定 Wrangler 4.130.0 在 `WRANGLER_SEND_METRICS=false` 和忽略的本地日志路径下再次 `deploy --dry-run` 成功，仍无绑定且没有部署。根 `make test` 使用本机 localhost 权限跑合成服务；没有外部来源、模型或生产数据库请求。
+
 ## 2026-10-07 免费版与中国大陆访问决定
 
 - Rui 明确只开 Cloudflare 真正免费的服务，不开通其他服务。现有 Cloudflare Pages Free 项目不需另建；R2 虽有月度免费额度，开通仍接受按量计费，故未启用、未创建桶、未上传。此约束使当前真实密文离站备份/恢复关卡继续阻塞。

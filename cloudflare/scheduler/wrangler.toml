@@ -1,0 +1,11 @@
+name = "insparian-scam-radar-scheduler"
+main = "src/index.mjs"
+compatibility_date = "2026-10-07"
+workers_dev = false
+send_metrics = false
+
+# 07:17, 13:17, 20:17 Asia/Shanghai; Cloudflare Cron uses UTC.
+[triggers]
+crons = ["17 5,12,23 * * *"]
+
+# No live bindings are committed. Missing ENABLED keeps every cron invocation inert.

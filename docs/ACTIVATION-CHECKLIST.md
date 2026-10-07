@@ -79,6 +79,7 @@
 | 现有 Frankfurt Supabase | 来源元数据、受限正文、AI 结果、证据映射、Heat、审核/发布状态 | worker 仅狭窄 RPC；禁止直接表写、禁止代替 reviewer；实际地区/配置须激活前再核验 | 停采集/AI；保留旧静态网站 |
 | Supabase Auth/reviewer | 登录会话、证据决定、审核理由 | 现有独立 reviewer；Auth 登录不等于角色授权 | 禁用 reviewer、撤销会话；保留审计 |
 | Cloudflare Pages | 通过扫描的同一 release 静态产物 | Pages Write，不授 DNS/Workers/R2；令牌影响同账户项目，非单项目隔离 | deploy=false；不影响现有页面 |
+| Cloudflare Workers Free Cron → GitHub Actions | 固定仓库/工作流/`main`、单一已批准来源 key、`dry_run=false`；独立 GitHub Actions token | 仅此仓库的 Actions: write；Worker 无 Pages/Supabase/模型凭据，默认关闭，需核实 Workers Free | Worker scheduler enabled=false；GitHub collection enabled=false 可独立阻断 |
 | 私有 R2 | age 密文、随机对象名、SHA-256、字节数及时间；不含明文 dump | 独立私有桶，仅对象读/列举/写权限以便回读校验；无删除/桶管理；每日 02:43 UTC 一次，推荐保留 7 日+4 周，删除策略另行明确批准 | backup=false；禁止公共访问 |
 | 公众浏览器 → Pages | 页面/静态资产请求、普通访问元数据 | 无用户账户、无跟踪 SDK；关键词仅在内存 | 无搜索上报路径 |
 

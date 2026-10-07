@@ -22,11 +22,14 @@ check:
 	cd worker && $(PYTHON) -m mypy
 	$(PYTHON) scripts/generate_database_types.py --check
 	$(PYTHON) scripts/check_workflows_pinned.py
+	node --check cloudflare/scheduler/src/index.mjs
+	node --check cloudflare/scheduler/test/index.test.mjs
 	$(MAKE) open-source-audit
 	cd web && npm run check
 
 test:
 	$(PYTHON) -m pytest worker/tests supabase/tests
+	node --test cloudflare/scheduler/test/*.test.mjs
 	cd web && npm run test:e2e
 	$(PYTHON) scripts/check_secrets.py --export web/out
 

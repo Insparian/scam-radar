@@ -76,6 +76,7 @@ Your role is to help Rui make the best decision, not to support his opinion.
 - `evals/`: offline Gold Set, recorded responses, expected results, and reports.
 - `docs/`: architecture, data flow, dependency/architecture decisions, and runbooks.
 - `scripts/`: thin repository-level automation only.
+- `cloudflare/scheduler/`: dependency-free Workers Free Cron dispatcher, its deployment config, and local tests; no public-site assets or collection logic.
 - `work/`: ignored and disposable local output. Commands may recreate namespaced children and must never treat it as durable state.
 - `DECISIONS/`: product decision checkpoints required by this repository's conversation rule.
 
