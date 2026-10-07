@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Get a fresh checkout to a verified offline fixture state. This runbook does **not** activate collection, a live model, production Supabase, Cloudflare, or DNS. Decision 015 requires a [dedicated Cloudflare Free account](dedicated-cloudflare-account.md); its ID is deliberately unset in `config/cloudflare-account.json`, so all Cloudflare write workflows stop until the account is separately approved and reviewed.
+Get a fresh checkout to a verified offline fixture state. This runbook does **not** activate collection, a live model, production Supabase, Cloudflare, or DNS. Decision 015's [dedicated Cloudflare Free account](dedicated-cloudflare-account.md) is now created, and its reviewed ID is recorded in `config/cloudflare-account.json`. Matching that ID is necessary for Pages, KV, and Worker writes, but does not authorize them; their separate activation gates remain closed.
 
 ## Offline setup — allowed now
 
@@ -104,7 +104,7 @@ Before complete live-system activation, also show Rui:
 
 Only after approval:
 
-1. Reuse the verified Supabase project. The existing Frankfurt Supabase project was restored with Rui's separate authorization on 2026-10-07 and showed Healthy. Existing Pages previews are in a shared Cloudflare account; do not deploy there again. Create a dedicated Free account and new Pages projects only after separate approval, following [account isolation](dedicated-cloudflare-account.md). R2 requires a subscription that may incur charges and is not selected; the proposed KV backup remains off until its [retention and recovery gates](kv-backup.md) pass.
+1. Reuse the verified Supabase project. The existing Frankfurt Supabase project was restored with Rui's separate authorization on 2026-10-07 and showed Healthy. Existing Pages previews are in a shared Cloudflare account; do not deploy there again. The dedicated Free account is created, but new Pages projects still require separate approval, following [account isolation](dedicated-cloudflare-account.md). R2 requires a subscription that may incur charges and is not selected; the proposed KV backup remains off until its [retention and recovery gates](kv-backup.md) pass.
 2. Store secrets in GitHub Encrypted Secrets, never repository files or workflow scope.
 3. Create the first reviewer in Supabase Auth through the Dashboard so the reviewer
    sets their own password; do not add an SMTP service merely for this bootstrap.

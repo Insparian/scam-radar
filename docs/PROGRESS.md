@@ -1,5 +1,10 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 云端迁移说明校准
+
+- 修正初始化说明和数据流总览中“专用 Cloudflare 账户尚未创建、ID 为空”的过期描述。现在账户已建立且 ID 已审核；Pages、Worker、KV 仍待各自批准和创建。
+- 预览 Pages 工作流仍绑定旧项目名与 URL，需取得新账户实际项目名/域名后同步修改，不能仅替换凭据。空 KV 命名空间的单独授权已向 Rui 请求，尚未创建。
+
 ## 2026-10-07 专用 Cloudflare Free 账户已建立
 
 - Rui 此轮 `proceed` 后，在同一登录下创建 `Scam Radar` 独立 Cloudflare 账户，控制台账户 ID 为 `6b22b689e228b2f4a96bac9b223cc9cf`。Billing → Subscriptions 显示 `Workers Free` 为 `Active`，`No payment method on file`；没有选择升级。
