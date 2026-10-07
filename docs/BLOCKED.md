@@ -2,6 +2,8 @@
 
 ## 2026-10-07 只读核查后具体阻塞
 
+- Rui 最新限定只开真正免费的 Cloudflare 服务，不开通其他服务。现有 Pages Free 项目可沿用；R2 开通须接受按量计费，故不启用。Supabase Free 又不含项目定时备份，当前设计没有已批准的真实离站备份目的地；真实数据写入与恢复关卡继续阻塞，不能降低备份门槛来宣称上线。
+- Cloudflare 免费全球网络不提供中国境内节点保障；中国网络需 Enterprise 加独立订阅和 ICP 备案。`scamradar.insparian.com` 还没有正式部署/DNS，不能声称大陆可用。先做三网、iOS/Android、微信实测；若大陆稳定性不达标，阿里云内地部署又涉及付费与备案，当前约束下暂不启动。
 - Rui 单独授权恢复后，现有 Frankfurt Supabase `scam-radar` Free 项目已显示 Healthy。线上迁移只到 `20260917000100_evidence_resolution_events`（7 个），仓库现有 22 个，后续 15 个仍未应用。恢复项目不等于授权生产迁移或业务读写；执行前须有可验证备份/回退方案、逐项迁移审阅及既有精确确认。
 - Supabase 的 Free 备份页面明确显示不含项目定时备份。Data API 设置显示 `0 of 24 tables exposed`、`0 of 50 functions exposed`，自动暴露新对象关闭；审核站所需 RPC 在生产环境是否可调用尚未验证。不得以本地 grants/RLS 通过推断云端审核链已可用。
 - Cloudflare 公开站及审核站 Pages 项目均无 production 部署；公开站没有 custom domain，目标 `insparian.com` 的 DNS 由 Rui 确认在 Namecheap。须在发布确认前核对 Pages 返回的精确 CNAME，不能预设或修改 DNS。

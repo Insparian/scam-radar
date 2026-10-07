@@ -1,5 +1,10 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 免费版与中国大陆访问决定
+
+- Rui 明确只开 Cloudflare 真正免费的服务，不开通其他服务。现有 Cloudflare Pages Free 项目不需另建；R2 虽有月度免费额度，开通仍接受按量计费，故未启用、未创建桶、未上传。此约束使当前真实密文离站备份/恢复关卡继续阻塞。
+- [Cloudflare 中国网络](https://developers.cloudflare.com/china-network/get-started/)要求 Enterprise 方案、独立订阅及 ICP；Pages Free 不能据此获得境内节点或可用性保证。[阿里云内地托管](https://www.alibabacloud.com/help/en/icp-filing/basic-icp-service/product-overview/icp-filing-requirements-for-a-regular-website)需备案且属于另行付费选项。未检查既有预览站；正式域名尚未发布，须按 `docs/BLOCKED.md` 的三网/设备/微信关卡实测后再决定是否迁移。
+
 ## 2026-10-07 Supabase 项目恢复与线上配置核查
 
 - Rui 明确授权操作后，恢复现有 `scam-radar` Free 项目；控制台显示 Healthy，地区仍为 `eu-central-1`（Frankfurt），项目 URL 为 `https://eswsxqgsdwsovuapvtld.supabase.co`。未读取密钥、业务数据或执行 SQL。
