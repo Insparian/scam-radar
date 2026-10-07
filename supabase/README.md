@@ -87,12 +87,13 @@ numeric `schema_version: 2` for new releases. V2 exposes release `published_at`,
 It does not expose the verification path, reviewer identity, raw source text, spans, or
 candidate payload.
 
-The database v2 export currently covers the normalized public core, while the offline
-web fixture also contains presentation copy such as `immediate_action`,
-`mechanism_steps`, categories, search terms, and timeline entries. Before production
-activation, choose and contract-test one versioned mapping: either persist those fields
-on immutable revisions or add a deterministic export adapter. Do not silently invent
-them during deployment. The current static build remains fixture-backed.
+The database v2 export covers the normalized public core. The deterministic adapter
+in `worker/src/scam_radar/storage/public_export.py` maps reviewed revision fields to
+the website presentation contract without loading fixture copy; its exact-release
+mapping and negative cases run in `make database-test`. The current public site still
+uses a fixture release. A production build must consume a real reviewed release and
+pass the same presentation validation before deployment. See
+`docs/public-export-mapping.md` for the field-by-field contract.
 
 ## Offline verification
 
