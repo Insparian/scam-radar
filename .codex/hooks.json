@@ -1,0 +1,49 @@
+{
+  "description": "Privacy-minimized Goal Router activity log and optional thin-coordinator guard.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/goal_router_model_activity.py\" --log work/goal-router-diagnostics/model-activity.jsonl --policy work/goal-router-diagnostics/coordinator-policy.json",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/goal_router_model_activity.py\" --log work/goal-router-diagnostics/model-activity.jsonl --policy work/goal-router-diagnostics/coordinator-policy.json",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/goal_router_model_activity.py\" --log work/goal-router-diagnostics/model-activity.jsonl --policy work/goal-router-diagnostics/coordinator-policy.json",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/goal_router_model_activity.py\" --log work/goal-router-diagnostics/model-activity.jsonl --policy work/goal-router-diagnostics/coordinator-policy.json",
+            "timeout": 3
+          }
+        ]
+      }
+    ]
+  }
+}

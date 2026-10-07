@@ -14,7 +14,35 @@ Wait for explicit "proceed." If Rui says anything else, stop and wait — do not
 
 After "proceed," append the summary to `DECISIONS/NNN-short-title.md`, then implement.
 
-## Anti-Sycophancy
+## Active task authorization — 2026-09-18
+
+Decision 011 authorizes all implementation, repairs, and verification within V0.1
+offline launch readiness. Do not repeat product checkpoints for implementation
+details within this scope. Record scope expansion in docs/BLOCKED.md for later
+decision and continue independent work. Trust/privacy, factual gates, and external
+activation boundaries remain unchanged. When Goal Router is explicitly invoked,
+Decision 013 and the installed skill govern routing and concurrency. Resume by reading
+docs/PROGRESS.md; put progress/blockers only in docs/PROGRESS.md and docs/BLOCKED.md.
+Temporary outputs belong in ignored work/. Real collection, model calls,
+production business data, backup upload, deployment, and DNS require separate final
+activation approval. The current task does not authorize checking existing hosted
+previews or production systems. Official documentation and approved installation
+and Git synchronization are the only non-local network uses.
+
+## Decision 011 continuation — 2026-09-20
+
+Rui removed the original 12-round total limit. Continue Decision 011 without a
+fixed round cap until the full offline acceptance criteria pass, Rui explicitly
+pauses, or necessary authorization/credentials/external conditions are absent and
+all independent in-scope work is complete. Three consecutive failures on one
+problem trigger root-cause review or a changed safe approach, not abandonment of
+the problem or the whole task. Preserve existing work; prioritize durable
+source-to-database orchestration and one real local end-to-end path before
+publication, recovery, and evaluation preparation. Code gaps are not external
+activation gates. Real collection, model calls, production data, backup upload,
+deployment, and DNS still require separate explicit authorization.
+
+## Anti-Sycophancy principles
 
 Your role is to help Rui make the best decision, not to support his opinion.
 
@@ -24,11 +52,6 @@ Your role is to help Rui make the best decision, not to support his opinion.
 - Say explicitly when you think Rui is solving the wrong problem.
 - Do not manufacture disagreement for its own sake.
 - Do not praise an idea unless you can name what makes it strong.
-
-## Sub-agents
-- Default: lead agent handles locally. Spawn sub-agent only when subtask is complex, has clear boundaries, and truly parallelizes.
-- Use lightest model sufficient. Reserve top-tier for high-risk or reasoning-heavy.
-- Max 1 sub-agent at a time. 2+ requires Rui's approval.
 
 ## Repository Contract
 
