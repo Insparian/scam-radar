@@ -6,7 +6,7 @@
 - Cloudflare 公开站及审核站 Pages 项目均无 production 部署；公开站没有 custom domain，目标 `insparian.com` 的 DNS 由 Rui 确认在 Namecheap。须在发布确认前核对 Pages 返回的精确 CNAME，不能预设或修改 DNS。
 - R2 尚未开通，开通页要求接受可按量计费的自动续订服务；当前不能做真实离站密文备份/恢复。不要以免费额度推断绝无费用。
 - 5 项远端 Dependabot 告警所涉四组包已更新并推送，GitHub 重扫确认 open 0。在线 npm 审计另有 5 个 high，均在 `eslint-config-next` 开发工具链；生产依赖审计为 0。官方自动修复建议降到不匹配的 Next 14 配置，不能为消除数字直接采用。真实上线仍受下列云端与质量关卡阻塞。
-- 百炼专用 Key 仍空，真实样本授权/双人标签与模型质量未核验。`.env` 已留正确本地变量名，但 GitHub Actions 凭据须另配 Secrets/Variables，且激活开关维持关闭。
+- 百炼评测与 worker Key 已由 Rui 填入本地忽略的 `.env`，但尚未核验额度、有效性或调用；真实样本授权/双人标签与模型质量仍未核验。GitHub Actions 凭据须另配 Secrets/Variables，且激活开关维持关闭。
 
 ## 2026-10-07 P1 关闭；真实上线关卡仍开放
 

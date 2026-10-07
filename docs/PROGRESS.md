@@ -1,5 +1,12 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 凭据与 DNS 续查
+
+- 本地忽略的 `.env` 中 `SCAM_RADAR_EVAL_API_KEY`、`SCAM_RADAR_MODEL_API_KEY` 已非空；仅检查字段是否存在，未输出密钥内容，真实模型调用仍为 0。
+- Rui 提供 Namecheap 作为 DNS 登录入口；登录页已打开，当前仍未登录。待登录后只读核对 `insparian.com` 与 `scamradar` 记录，不修改 DNS。Cloudflare Pages 尚无 production 部署，当前没有可执行的正式 CNAME 变更。
+- 已请求百炼北京控制台只读核对实际额度/到期日；Supabase 恢复项目需另获授权。以上请求均不视为真实调用或生产激活许可。
+- 复核[百炼官方模型页](https://help.aliyun.com/zh/model-studio/qwen3-8-flash)与[免费额度规则](https://help.aliyun.com/zh/model-studio/new-free-quota)：`qwen3.8-flash` 北京区支持结构化输出；标价非零，实际免付费依赖账户内有效剩余额度与用完即停，不能只凭模型页判断。
+
 ## 2026-10-07 云端只读核查与提交
 
 - Rui 授权只读查看已登录的 Supabase、Cloudflare 控制台；未恢复项目、开通服务、读取密钥、访问站点预览或修改云资源。
