@@ -1,5 +1,10 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 远端离线 CI 恢复绿色
+
+- 提交 `ae0f101` 的 GitHub Offline CI 应用作业通过，数据库作业因未安装锁定 Python 依赖而报 `ModuleNotFoundError: pydantic`。`c52d859` 给数据库作业补 Python 3.13、uv 锁定依赖和网页端锁定依赖后，真实 SQL/公开导出通过，但合成流水线测试把 Docker 固定到 macOS Rancher Desktop 路径，Linux runner 报 `FileNotFoundError`。
+- 提交 `f79ffc0` 让合成流水线测试优先使用 `DOCKER_BIN` 或 PATH 中的 Docker，默认容器名与 `supabase/config.toml` 一致。GitHub [Offline CI 运行 37555107222](https://github.com/Insparian/scam-radar/actions/runs/37555107222) 两个作业均通过，包括从零启动本地 Supabase、数据库契约、审核与静态构建。`make check` 与本地配置检查通过。真实生产项目仍暂停；远端 CI 不代表真实模型、来源、备份或发布已激活。
+
 ## 2026-10-07 云端填写项与上线反馈复核
 
 - 再次只读确认 Supabase `scam-radar` 仍暂停，Cloudflare 公开 Pages 项目仍只有 preview、没有 production 部署；未点击恢复、上传或 DNS。
