@@ -1,5 +1,11 @@
 # V0.1 offline launch readiness
 
+## 2026-10-07 专用 Cloudflare Free 账户已建立
+
+- Rui 此轮 `proceed` 后，在同一登录下创建 `Scam Radar` 独立 Cloudflare 账户，控制台账户 ID 为 `6b22b689e228b2f4a96bac9b223cc9cf`。Billing → Subscriptions 显示 `Workers Free` 为 `Active`，`No payment method on file`；没有选择升级。
+- ID 已写入 `config/cloudflare-account.json` 和两个 Worker 配置。现有共享账户、其他项目 Workers/KV 未改；尚未为新账户创建 Pages、Worker、KV 命名空间或令牌。真实采集、模型、备份、发布与 DNS 未激活。
+- 已把整合分支 `codex/supabase-preflight` 推送到 GitHub。账户 ID 填写后，`make check`、`make test`（154 Python、9 Node、9 浏览器）和两个 Worker 的 Wrangler 离线 dry-run 再次通过。
+
 ## 2026-10-07 Worker 部署账户保护补强
 
 - 发现两个 Worker 的 Wrangler 配置原先没有固定账户 ID；若直接执行 Wrangler，可能误选承载其他项目的现有 Cloudflare 账户。现已在两个配置加入全零占位 ID，待专用账户单独获批并审核后才可一起替换为 `config/cloudflare-account.json` 的 ID；新增本地一致性测试。

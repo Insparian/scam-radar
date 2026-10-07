@@ -1,7 +1,6 @@
 name = "insparian-scam-radar-backup-scheduler"
-# Replace only with the reviewed dedicated ID in config/cloudflare-account.json.
-# All-zero sentinel makes direct Wrangler writes fail before account activation.
-account_id = "00000000000000000000000000000000"
+# Reviewed dedicated Scam Radar account; must match config/cloudflare-account.json.
+account_id = "6b22b689e228b2f4a96bac9b223cc9cf"
 main = "src/index.mjs"
 compatibility_date = "2026-10-07"
 workers_dev = false

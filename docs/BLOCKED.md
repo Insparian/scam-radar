@@ -2,13 +2,13 @@
 
 ## 2026-10-07 Decision 015：Cloudflare 隔离账户与 KV 备份
 
-- 两组离线改动已合并到本地 `codex/supabase-preflight`，完整离线套件通过；远端推送仍需 Rui 对这次远端分支创建明确授权。Mac 当前锁屏，既有只读浏览器授权暂时无法用于核查独立账户创建资格。
-- Rui 回复 `proceed`，批准离线方案：同一登录下为 Scam Radar 单独使用 Cloudflare Free 账户；现有共享账户其他 Workers/KV 不碰。账户尚未创建，`config/cloudflare-account.json` 中 ID 为空，Pages 与 KV 写流程现在会主动拒绝。现有预览仍在共享账户，尚未迁移或检查线上站点。
+- 两组离线改动、Worker 账户保护及新账户 ID 配置已在 `codex/supabase-preflight` 验证；完整离线套件通过。提交/推送状态见 `docs/PROGRESS.md` 当日条目。
+- Rui 回复 `proceed` 后，已在同一登录下创建专用 `Scam Radar` Cloudflare 账户，账户 ID 已写入版本化配置。Billing 显示 `Workers Free` Active，未绑定付款方式；现有共享账户其他 Workers/KV 未改。现有预览仍在共享账户，尚未迁移或检查线上站点。
 - 新 KV 备份协议只在本地合成数据验证；真实路径将是 Supabase → 受保护的 GitHub runner → 加密 → 独立账户 Workers KV。备份 Worker 只负责唤醒 GitHub，不持有数据库或 KV 密钥。没有创建 Worker/KV、读生产数据或上传。
-- **上线仍阻塞：** 需另行批准创建 Free 账户/资源与预览迁移；审核并固定新账户 ID、确认费用为 Free；实测真实密文体积不超过 64 MiB、确定不超过 1 GB 的保留/删除策略、恢复密钥保管、独立数据库完整恢复及备份缺席/容量告警。当前没有自动删除，长期每日备份会耗尽容量。既有共享账户的 Secrets 不能沿用。
+- **上线仍阻塞：** 需另行批准创建 Pages、Worker、KV 等资源与预览迁移；实测真实密文体积不超过 64 MiB、确定不超过 1 GB 的保留/删除策略、恢复密钥保管、独立数据库完整恢复及备份缺席/容量告警。当前没有自动删除，长期每日备份会耗尽容量。既有共享账户的 Secrets 不能沿用。
 - 真实来源、模型、生产迁移、发布、DNS、大陆访问与 7 天稳定性关卡仍开放。下文 R2 是历史候选，现行计划见 [KV 备份](runbooks/kv-backup.md) 与 [账户分工](runbooks/dedicated-cloudflare-account.md)。
 
-## 2026-10-07 只读核查后具体阻塞
+## 2026-10-07 账户创建前只读核查后具体阻塞（历史状态）
 
 - Cloudflare 现有账户还承载 Rui 的其他项目 Workers 与 KV 命名空间，不能把新建 Scam Radar 命名空间误认为账户/权限隔离。Rui 已对独立 Free 账户的 Decision 015 回复 `proceed`；离线实现已本地提交，尚未创建账户、部署、迁移预览、上传或改 DNS。当前共享账户及其他项目未修改。
 - 历史评估：Cloudflare Workers KV Free 官方额度为 1 GB 存储、单值 25 MiB、每天 1,000 次写入；超额操作失败而非自动收费。账户控制台曾只读确认共享账户 Workers `Free`，但这不证明新独立账户的最终套餐。Decision 015 已在离线代码中改用 KV 与独立备份 Cron；真实容量、保留期、完整恢复和缺席告警仍未验收，不能宣称备份持续运行。

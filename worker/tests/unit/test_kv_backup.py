@@ -120,8 +120,8 @@ def test_corrupt_remote_chunk_rejected_on_download(tmp_path, monkeypatch):
     assert not restored.exists()
 
 
-def test_live_mode_requires_reviewed_account():
-    with pytest.raises(ValueError, match="dedicated_cloudflare_account_not_reviewed"):
+def test_live_mode_rejects_non_dedicated_account():
+    with pytest.raises(ValueError, match="cloudflare_account_mismatch"):
         kv.KVBackupStore(
             mode="live",
             endpoint="https://api.cloudflare.com/client/v4",
@@ -129,3 +129,15 @@ def test_live_mode_requires_reviewed_account():
             namespace_id="c" * 32,
             token="synthetic-token",
         )
+    reviewed_id = json.loads((kv.ROOT / "config/cloudflare-account.json").read_text())[
+        "dedicated_account_id"
+    ]
+    client = kv.KVBackupStore(
+        mode="live",
+        endpoint="https://api.cloudflare.com/client/v4",
+        account_id=reviewed_id,
+        namespace_id="c" * 32,
+        token="synthetic-token",
+        opener=LocalKV(),
+    )
+    assert client.account_id == reviewed_id
